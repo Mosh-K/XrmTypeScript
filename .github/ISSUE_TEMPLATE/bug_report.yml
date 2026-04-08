@@ -1,0 +1,27 @@
+name: Bug Report
+description: Something isn't working as expected
+labels: [bug]
+
+body:
+  - type: input
+    id: version
+    attributes:
+      label: XrmTypeScript version
+      placeholder: e.g. v1.0.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Include any error messages or unexpected output.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true

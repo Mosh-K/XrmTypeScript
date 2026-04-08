@@ -1,0 +1,4 @@
+[*.fs]
+max_line_length = 110
+indent_style = space
+indent_size = 2

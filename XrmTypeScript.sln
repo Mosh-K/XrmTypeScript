@@ -1,0 +1,46 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.4.11626.88 stable
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "XrmTypeScript", "src\XrmTypeScript.fsproj", "{7E90D6CE-A10B-4858-A5BC-41DF7250CBCA}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{1C836AB9-415A-451A-AF64-E448BABB4BAF}"
+	ProjectSection(SolutionItems) = preProject
+		docs\comparison.md = docs\comparison.md
+		docs\form-scripting.md = docs\form-scripting.md
+		docs\tool-arguments.md = docs\tool-arguments.md
+		docs\web-api.md = docs\web-api.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "project", "project", "{84BBD1DA-0245-4F65-8FF8-3B34187280BB}"
+	ProjectSection(SolutionItems) = preProject
+		build.fsx = build.fsx
+		README.md = README.md
+		CHANGELOG.md = CHANGELOG.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "files", "files", "{D293DD8F-21CF-459F-88E0-7D44D3B35DDE}"
+	ProjectSection(SolutionItems) = preProject
+		files\Run.fsx = files\Run.fsx
+		files\Run.ps1 = files\Run.ps1
+		files\XrmTypeScript.exe.config = files\XrmTypeScript.exe.config
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7E90D6CE-A10B-4858-A5BC-41DF7250CBCA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7E90D6CE-A10B-4858-A5BC-41DF7250CBCA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7E90D6CE-A10B-4858-A5BC-41DF7250CBCA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7E90D6CE-A10B-4858-A5BC-41DF7250CBCA}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {875C735B-DCDB-4FF7-B505-A55448FFAF4D}
+	EndGlobalSection
+EndGlobal
