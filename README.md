@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/Mosh-K/XrmTypeScript/actions/workflows/ci.yml/badge.svg)](https://github.com/Mosh-K/XrmTypeScript/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Mosh-K/XrmTypeScript)](https://github.com/Mosh-K/XrmTypeScript/releases/latest)
+[![Attestation](https://img.shields.io/badge/build-attested-brightgreen?logo=github)](https://github.com/Mosh-K/XrmTypeScript/attestations)
 
 XrmTypeScript generates TypeScript declaration files from your Dynamics 365 / Power Apps solution,
 giving you full intellisense and compile-time type safety for form scripting and Web API development.

@@ -33,3 +33,13 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: bin/*.zip
+          body: |
+            ## Verify provenance
+
+            The release zip is built and signed via GitHub Actions. Verify with the [GitHub CLI](https://cli.github.com/):
+
+            ```
+            gh attestation verify <XrmTypeScript-vX.X.X-bin.zip> --repo Mosh-K/XrmTypeScript
+            ```
+
+            [View attestations](https://github.com/Mosh-K/XrmTypeScript/attestations)

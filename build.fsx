@@ -94,7 +94,7 @@ let runXts () =
 let zip tag =
     let buildOutDir = "src/bin/Release/net462"
     let stageDir    = "temp/zipstage"
-    let zipPath     = $"bin/XrmTypeScript-{tag}.zip"
+    let zipPath     = $"bin/XrmTypeScript-{tag}-bin.zip"
 
     cleanDir stageDir
 
