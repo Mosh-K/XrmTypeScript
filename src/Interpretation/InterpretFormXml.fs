@@ -375,6 +375,9 @@ let interpretFormXml (enums:Map<string,TsType>) (bpfFields: ControlField list op
       if tabHandle = null then None
       else
 
+      let tabIname = Utility.sanitizeString tabHandle
+      let tabDescription = getDescription tab
+
       let sections: XrmFormSection list = 
         tab.Descendants(XName.Get("section"))
         |> Seq.choose (fun section -> 
@@ -389,12 +392,18 @@ let interpretFormXml (enums:Map<string,TsType>) (bpfFields: ControlField list op
               |> renameControls
               |> List.sortBy (fun (name, _, _, _, _,_) -> name)
 
-            Some (Utility.sanitizeString sectionHandle, sectionHandle, Some (Comment.Create (getDescription section)), controls))
-          |> Seq.filter (fun (name, _, _, _) -> String.IsNullOrEmpty name |> not)
-          |> Seq.sortBy (fun (name, _, _, _) -> name)
+            Some
+              { iname = Utility.sanitizeString sectionHandle
+                name = sectionHandle
+                displayName = getDescription section
+                controls = controls
+                tabIname = tabIname
+                tabDescription = tabDescription })
+          |> Seq.filter (fun s -> String.IsNullOrEmpty s.iname |> not)
+          |> Seq.sortBy (fun s -> s.iname)
           |> List.ofSeq
 
-      Some (Utility.sanitizeString tabHandle, tabHandle, Some (Comment.Create (getDescription tab)), sections))
+      Some (tabIname, tabHandle, Some (Comment.Create tabDescription), sections))
     |> Seq.filter (fun (name, _, _, _) -> String.IsNullOrEmpty name |> not) 
     |> Seq.sortBy (fun (name, _, _, _) -> name)
     |> List.ofSeq

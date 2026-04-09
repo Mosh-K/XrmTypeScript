@@ -50,21 +50,24 @@ and Comment =
     label: string 
     colType: string
     relType: string
+    tab: string
     link: string }
-  static member Create(?displayName, ?label, ?colType, ?relType, ?link) = 
-    { displayName = defaultArg displayName ""  
+  static member Create(?displayName, ?label, ?colType, ?relType, ?tab, ?link) =
+    { displayName = defaultArg displayName "" 
       label = defaultArg label "" 
       colType = defaultArg colType ""
       relType = defaultArg relType ""
+      tab = defaultArg tab "" 
       link = defaultArg link "" }
   member c.ToCommentStrings() =
     let dsLine = if String.IsNullOrWhiteSpace c.displayName then None else Some $"**{c.displayName.Trim()}**"
+    let tabLine = if String.IsNullOrWhiteSpace c.tab then None else Some $"Tab: *{c.tab.Trim()}*"
     let labelLine = if String.IsNullOrWhiteSpace c.label then None else Some $"Label: {c.label.Trim()}"
     let colTypeLine = if String.IsNullOrWhiteSpace c.colType then None else Some $"Column Type: *{c.colType.Trim()}*"
     let relTypeLine = if String.IsNullOrWhiteSpace c.relType then None else Some $"Relationship Type: *{c.relType.Trim()}*"
     let linkLine = if String.IsNullOrWhiteSpace c.link then None else Some (sprintf "{@link %s}" (c.link.Trim()))
 
-    let lines = [ dsLine; labelLine; colTypeLine; relTypeLine; linkLine ] |> List.choose id
+    let lines = [ dsLine; tabLine; labelLine; colTypeLine; relTypeLine; linkLine ] |> List.choose id
     match lines with
     | [] -> []
     | [ line ] -> [ $"/** {line} */" ]
