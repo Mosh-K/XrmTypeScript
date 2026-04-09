@@ -198,19 +198,32 @@ let getQuickViewFormCollection (quickViewForms: XrmFormQuickViewForm list) (form
   let getFuncs =
     quickViewForms
     |> List.map (fun (name, displayName, (_, formId)) ->
-        let paramType = getConstantType name
-        let returnType = 
-          match formMap.TryGetValue formId with
-          | true, form -> TsType.Custom $"{nsName form}.{form.name}"
-          | false, _ -> TsType.Custom Controls.QuickForm
-        Function.Create("get", [Variable.Create("name", paramType)], returnType, Comment.Create displayName)
-    )
+      let returnType, target =
+        match formMap.TryGetValue formId with
+        | true, form ->
+          let a = $"{nsName form}.{form.name}"
+          TsType.Custom a, a
+        | false, _ -> TsType.Custom Controls.QuickForm, ""
+
+      Function.Create(
+        "get",
+        [ Variable.Create("name", getConstantType name) ],
+        returnType,
+        Comment.Create(displayName, link = target)
+      ))
+
   let nameofFuncs =
     match quickViewForms with
     | [] -> []
     | _ -> [ getNameofFunction QuickFormUnion Controls.QuickForm ]
+
   let defaultFuncs = getDefaultFuncs "get" Controls.QuickForm
-  Interface.Create(Interfaces.QuickForms, extends = [ Collections.QuickForms ], funcs = getFuncs @ nameofFuncs @ defaultFuncs)
+
+  Interface.Create(
+    Interfaces.QuickForms,
+    extends = [ Collections.QuickForms ],
+    funcs = getFuncs @ nameofFuncs @ defaultFuncs
+  )
 
 let getQuickFormNames (quickViewForms: XrmFormQuickViewForm list) =
   let getNames =
@@ -222,10 +235,14 @@ let getQuickFormNames (quickViewForms: XrmFormQuickViewForm list) =
 let getTabCollection (tabs: XrmFormTab list) =
   let getFuncs =
     tabs
-    |> List.map (fun (iname, name, comment, _) ->
-      let paramType = getConstantType name
-      let returnType = TsType.Generic (Controls.Tab, $"{TabSectionsNs}.{iname}")
-      Function.Create("get", [Variable.Create("name", paramType)], returnType, ?comment = comment))
+    |> List.map (fun t ->
+      let target = $"{TabSectionsNs}.{t.iname}"
+
+      Function.Create(
+        "get",
+        [ Variable.Create("name", getConstantType t.name) ],
+        TsType.Generic(Controls.Tab, target),
+        Comment.Create(t.displayName, link = target)))
 
   let nameofFunc = getNameofFunction TabUnion Controls.Tab
   let defaultFuncs =  getDefaultFuncs  "get" Controls.Tab
@@ -234,7 +251,7 @@ let getTabCollection (tabs: XrmFormTab list) =
 let getTabNames (tabs: XrmFormTab list) =
   let getNames =
     tabs
-    |> List.map (fun (_, name, _, _) -> getConstantType name)
+    |> List.map (fun t -> getConstantType t.name)
   TabUnion, TsType.Union getNames
 
 /// Generate Xrm.Page.ui.tabs.get(<string>).sections.get(<string>) functions.
@@ -242,18 +259,20 @@ let getTabSections (tabs: XrmFormTab list) =
   let getFuncs (sections: XrmFormSection list) = 
     sections
     |> List.map (fun s ->
+      let target = $"{SectionControlsNs}.{s.iname}"
+
       Function.Create(
         "get",
         [ Variable.Create("name", getConstantType s.name) ],
-        TsType.Generic(Controls.Section, $"{SectionControlsNs}.{s.iname}"),
-        Comment.Create s.displayName
+        TsType.Generic(Controls.Section, target),
+        Comment.Create(s.displayName, link = target)
       ))
 
   let defaultFuncs = getDefaultFuncs "get" Controls.Section
 
-  tabs |> List.map (fun (iname, name, comment, sections) ->
-    Interface.Create(iname, ?comment = comment, extends = [ Collections.Sections ], 
-      funcs = getFuncs sections @ defaultFuncs))
+  tabs |> List.map (fun t ->
+    Interface.Create(t.iname, Comment.Create t.displayName, extends = [ Collections.Sections ],
+      funcs = getFuncs t.sections @ defaultFuncs))
 
 /// Generate Xrm.Page.ui.tabs.sections.get(<someSection>).controls.get(<string>) functions.
 let getSectionControls (sections: XrmFormSection list) (formType: string option) (crmVersion: Version) =
@@ -331,8 +350,8 @@ let getFormNamespace (form: XrmForm) formMap crmVersion =
           SectionControlsNs,
           interfaces =
             (form.tabs
-             |> List.collect (fun (_, _, _, sections) ->
-               getSectionControls sections form.formType crmVersion))
+             |> List.collect (fun t ->
+               getSectionControls t.sections form.formType crmVersion))
         ) ]
   )
 

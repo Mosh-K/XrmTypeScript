@@ -103,7 +103,11 @@ type QuickViewReference = string * System.Guid
 
 type XrmFormAttribute = string * Comment option * AttributeType * CanBeNull
 type XrmFormControl = string * Comment option * XrmFormAttribute option * ControlType * bool * CanBeNull
-type XrmFormTab = string * string * Comment option * XrmFormSection list
+type XrmFormTab =
+  { iname: string
+    name: string
+    displayName: string
+    sections: XrmFormSection list }
 and XrmFormSection =
   { iname: string
     name: string

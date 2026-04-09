@@ -135,7 +135,7 @@ let getControl  (enums:Map<string,TsType>) (entity: XrmEntity) (cField:ControlFi
     | None -> Comment.Create cField.displayName
     | Some attr ->
       let label = if cField.displayName.Trim() <> attr.displayName.Trim() then cField.displayName else ""
-      Comment.Create(attr.displayName, label, attr.typeName, getLink entity attr)
+      Comment.Create(attr.displayName, label = label, colType = attr.typeName, link = getLink entity attr)
     
   let cType = 
     match cField.controlClass with
@@ -403,9 +403,13 @@ let interpretFormXml (enums:Map<string,TsType>) (bpfFields: ControlField list op
           |> Seq.sortBy (fun s -> s.iname)
           |> List.ofSeq
 
-      Some (tabIname, tabHandle, Some (Comment.Create tabDescription), sections))
-    |> Seq.filter (fun (name, _, _, _) -> String.IsNullOrEmpty name |> not) 
-    |> Seq.sortBy (fun (name, _, _, _) -> name)
+      Some
+        { iname = tabIname
+          name = tabHandle
+          displayName = tabDescription
+          sections = sections })
+    |> Seq.filter (fun t -> String.IsNullOrEmpty t.iname |> not)
+    |> Seq.sortBy (fun t -> t.iname)
     |> List.ofSeq
 
  
