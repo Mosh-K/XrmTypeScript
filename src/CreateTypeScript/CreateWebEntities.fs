@@ -35,13 +35,19 @@ let entityId (e: XrmEntity, optional ) =
 let logicalName (a: XrmAttribute) = a.logicalName
 let valueInfix (s: string) = $"_{s}_value"
 let guidName (a: XrmAttribute) = valueInfix a.logicalName
-let formattedName (a: XrmAttribute) = 
+
+let formattedName (a: XrmAttribute) =
+  let format = "@OData.Community.Display.V1.FormattedValue"
+
   match a.specialType with
-  | SpecialType.EntityReference -> $"\"{valueInfix a.logicalName}@OData.Community.Display.V1.FormattedValue\"" 
-  | _ -> $"\"{a.logicalName}@OData.Community.Display.V1.FormattedValue\""
-let lookupName (r: XrmRelationship) = $"\"{valueInfix r.attributeName}@Microsoft.Dynamics.CRM.lookuplogicalname\""
-let lookupType (r: XrmRelationship) = TsType.Custom $"\"{r.relatedSchemaName}\""
-let bindType (r: XrmRelationship) = TsType.Custom $"`/{r.relatedSetName}(${{string}})`"
+  | SpecialType.EntityReference -> $"\"{valueInfix a.logicalName}{format}\""
+  | _ -> $"\"{a.logicalName}{format}\""
+
+let lookupName (a: XrmAttribute) =
+  $"\"{valueInfix a.logicalName}@Microsoft.Dynamics.CRM.lookuplogicalname\""
+
+let bindType (r: XrmRelationship) =
+  TsType.Custom $"`/{r.relatedSetName}(${{string}})`"
 
 (** Various type helper functions *)
 let arrayOf = TsType.Custom >> TsType.Array
@@ -62,6 +68,22 @@ let assignUniqueNames =
                         | false -> { var with name = $"{var.name}{i}" }))
   >> List.concat
 //  >> sortByName
+
+let flattenUnion = function
+  | TsType.Union x -> x
+  | t -> [ t ]
+
+let groupByName (vars: Variable list) =
+  vars
+  |> List.groupBy (fun v -> v.name)
+  |> List.map (fun (_, vs) ->
+    if vs.Length = 1 then vs.Head else
+    let types =
+      vs
+      |> List.choose (fun v -> v.varType)
+      |> List.collect flattenUnion
+      |> List.distinct
+    { vs.Head with varType = Some (TsType.Union types) })
 
 let concatDistinctSort = 
   List.concat >> List.distinctBy (fun (x: Variable) -> x.name) >> sortByName
@@ -129,9 +151,25 @@ let getFormattedResultVariable  (ent: XrmEntity) (attr: XrmAttribute) =
   | true  -> getResultDef ent attr |> snd |> List.map defToFormattedVars
   | false -> []
 
-let getLookupNameVariable (r: XrmRelationship) =
-  if not r.referencing then None
-  else  Some <| Variable.Create(lookupName r, lookupType r, Comment.Create (r.displayName, relType = r.relType), optional = true)
+let getLookupNameVariable (a: XrmAttribute) =
+  match a.targetEntitySets with
+  | None
+  | Some [||] -> None
+  | Some tes ->
+    let unionType =
+      tes
+      |> Array.map (fun (n, _, _) -> TsType.Custom $"\"{n}\"")
+      |> Array.toList
+      |> TsType.Union
+
+    Some(
+      Variable.Create(
+        lookupName a,
+        unionType,
+        Comment.Create(a.displayName, colType = a.typeName),
+        optional = true
+      )
+    )
 
 let getBaseVariable (ent: XrmEntity) (attr: XrmAttribute) = 
   match attr.specialType with
@@ -187,13 +225,13 @@ let getEntityInterfaceLines (e: XrmEntity) =
           vars =
             e.allRelationships
             |> List.choose (getBindVariables true false attrMap)
-            |> assignUniqueNames
+            |> groupByName
             |> sortByName }
       { entityInterfaces.update with
           vars =
             e.allRelationships
             |> List.choose (getBindVariables false true attrMap)
-            |> assignUniqueNames
+            |> groupByName
             |> sortByName } ]
 
   let result =
@@ -210,28 +248,27 @@ let getEntityInterfaceLines (e: XrmEntity) =
           vars =
             e.allRelationships
             |> List.map (getRelationVars false)
-            |> assignUniqueNames
+            |> groupByName
             |> sortByName }
       { entityInterfaces.createRelationships with
           vars =
             e.allRelationships
             |> List.map (getRelationVars true)
-            |> assignUniqueNames
+            |> groupByName
             |> sortByName }
       { entityInterfaces.createAndUpdate with
           vars =
             entityId (e, true)
             :: (e.allRelationships
                 |> List.choose (getBindVariables true true attrMap)
-                |> assignUniqueNames
+                |> groupByName
                 |> sortByName) }
       { entityInterfaces.formattedResult with
           vars = e.attributes |> List.map (getFormattedResultVariable e) |> concatDistinctSort }
       { entityInterfaces.lookupResult with
           vars =
-            e.allRelationships
+            e.attributes
             |> List.choose getLookupNameVariable
-            |> assignUniqueNames
             |> sortByName } ]
 
   Namespace.Create(

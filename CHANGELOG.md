@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Changed
+- Lookup logical name variables are now derived from attributes rather than relationships, using a union type of all target entity names; duplicate variable names are merged into union types instead of being renamed
 - Section control interfaces now include a JSDoc comment with the tab display name and a `{@link}` reference to the containing tab section interface
 - Added `{@link}` comments to `ui.tabs.get()`, `tab.sections.get()`, and `ui.quickForms.get()` overloads
 - Lookup field JSDoc comments now include the target table's display name
