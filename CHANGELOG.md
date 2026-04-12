@@ -4,6 +4,7 @@
 ### Changed
 - Section control interfaces now include a JSDoc comment with the tab display name and a `{@link}` reference to the containing tab section interface
 - Added `{@link}` comments to `ui.tabs.get()`, `tab.sections.get()`, and `ui.quickForms.get()` overloads
+- Lookup field JSDoc comments now include the target table's display name
 ### Fixed
 - Fixed `ui.getControl()` JSDoc enum `{@link}` rendering
 

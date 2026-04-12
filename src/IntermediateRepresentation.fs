@@ -25,7 +25,7 @@ type XrmAttribute = {
   logicalName: string
   varType: TsType
   specialType: SpecialType
-  targetEntitySets: (string * string)[] option
+  targetEntitySets: (string * string * string)[] option
   typeName: string
   readable: bool
   createable: bool

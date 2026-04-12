@@ -53,7 +53,7 @@ let getTargetEntities (tes: string option) (a: XrmAttribute option) =
     match a'.targetEntitySets with
     | None -> if a.Value.specialType = Guid then "string" else "\"NoAttributeTargets\""
     | Some tes' ->
-      let el = tes' |> Array.unzip |> fst |> Array.toList
+      let el = tes' |> Array.map (fun (l, _, _) -> l) |> Array.toList
       match el.IsEmpty with
       | true -> "\"NoTargets\""
       | false -> List.fold(fun acc e -> sprintf "%s | \"%s\"" acc e) (sprintf "\"%s\"" el.Head) el.Tail
@@ -61,6 +61,12 @@ let getTargetEntities (tes: string option) (a: XrmAttribute option) =
 let getAttributeType = function
   | None -> TsType.Undefined
   | Some a -> a.varType
+let getTargetDisplayName (a: XrmAttribute) =
+    match a.targetEntitySets with
+    | None -> ""
+    | Some tes ->
+      tes |> Array.map (fun (_, _, dn) -> dn) |> String.concat " | "
+
 let getAttribute (enums:Map<string,TsType>) (entity: XrmEntity) (cField: ControlField): XrmFormAttribute option =
   if String.IsNullOrEmpty cField.dataFieldName then None else 
   
@@ -71,7 +77,7 @@ let getAttribute (enums:Map<string,TsType>) (entity: XrmEntity) (cField: Control
   let comment = 
     match attribute with
     | None -> Comment.Create cField.displayName
-    | Some attr -> Comment.Create(attr.displayName, colType = attr.typeName, link = getLink entity attr)
+    | Some attr -> Comment.Create(attr.displayName, colType = attr.typeName, table = getTargetDisplayName attr, link = getLink entity attr)
 
   let attrType = getAttributeType attribute
 
@@ -135,7 +141,7 @@ let getControl  (enums:Map<string,TsType>) (entity: XrmEntity) (cField:ControlFi
     | None -> Comment.Create cField.displayName
     | Some attr ->
       let label = if cField.displayName.Trim() <> attr.displayName.Trim() then cField.displayName else ""
-      Comment.Create(attr.displayName, label = label, colType = attr.typeName, link = getLink entity attr)
+      Comment.Create(attr.displayName, label = label, colType = attr.typeName, table = getTargetDisplayName attr, link = getLink entity attr)
     
   let cType = 
     match cField.controlClass with

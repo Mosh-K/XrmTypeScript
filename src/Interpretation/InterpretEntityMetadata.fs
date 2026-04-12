@@ -76,7 +76,7 @@ let interpretAttribute (nameMap: Map<string, EntityInfo>) labelMapping (a: Attri
         (fun k -> 
           match Map.tryFind k nameMap with
           | None -> None
-          | Some tes -> Some (k, tes.EntitySetName)
+          | Some tes -> Some (k, tes.EntitySetName, tes.DisplayName)
         )
       |> Some
     | _ -> None
