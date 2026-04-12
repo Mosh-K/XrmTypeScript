@@ -923,7 +923,7 @@ declare namespace Xrm {
          * @see {@link https://learn.microsoft.com/en-us/power-apps/developer/model-driven-apps/clientapi/reference/events/form-onsave External Link: Form OnSave event}
          * @see {@link https://learn.microsoft.com/en-us/power-apps/developer/model-driven-apps/clientapi/reference/execution-context External Link: Execution context (Client API reference)}
          */
-        interface SaveEventContext extends EventContext {
+        interface SaveEventContext<T extends FormContext = FormContext> extends EventContext<T> {
             /**
              * Gets save-event arguments.
              */
@@ -1033,7 +1033,7 @@ declare namespace Xrm {
     }
     interface EventContext<T extends FormContext = FormContext> extends Events.EventContext<T> {}
     interface LoadEventContext <T extends FormContext = FormContext> extends Events.LoadEventContext<T> {}
-    interface SaveEventContext extends Events.SaveEventContext {}
+    interface SaveEventContext<T extends FormContext = FormContext> extends Events.SaveEventContext<T> {}
     interface PostSaveEventContext <T extends FormContext = FormContext> extends Events.PostSaveEventContext<T> {}
     interface ChangeEventContext <T extends FormContext = FormContext> extends Events.Attribute.ChangeEventContext<T> {}
 
