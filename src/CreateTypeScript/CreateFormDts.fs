@@ -181,7 +181,7 @@ let getControlCollectionMap (form: XrmForm) (crmVersion: Version) =
       let returnType = getControlInterface cType aType canBeNull          
       match includeControl name form.formType crmVersion with
       | false -> None
-      | true -> Some (Variable.Create(name, returnType))
+      | true -> Some (Variable.Create($"\"{name}\"", returnType))
       )
     |> List.choose id
     
