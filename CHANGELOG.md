@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+## [1.1.0] - 2026-04-13
 ### Changed
 - Lookup JSDoc "Table:" lines now truncate to 5 target entities, appending `+N more` when there are additional targets
 - Refactored `Comment` type to use `XrmAttributeType` DU (24 SDK attribute types) instead of strings for type-safe formatting
@@ -19,4 +21,5 @@
 ### Added
 - Initial public release
 
+[1.1.0]: https://github.com/Mosh-K/XrmTypeScript/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Mosh-K/XrmTypeScript/releases/tag/v1.0.0
