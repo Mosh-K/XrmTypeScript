@@ -27,6 +27,7 @@ type TsType =
   | SpecificGeneric of string * TsType list
   | Function of Variable list * TsType
   | Custom of string
+  | EnumRef of string
   | Union of TsType list
   | Intersection of TsType list
 

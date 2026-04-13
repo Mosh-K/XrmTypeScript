@@ -1,5 +1,7 @@
 ﻿module internal DG.XrmTypeScript.TsStringUtil
 
+open Constants
+
 let getConstantType (name:string) = name.Replace("\\", "\\\\").Replace("\"", "\\\"") |> sprintf "\"%s\"" |> TsType.Custom
 
 let rec wrapIfRecursive ty =
@@ -24,6 +26,7 @@ and typeToString = function
       (String.concat ", " (List.collect varToIString v)) 
       (typeToString r)
   | TsType.Custom s       -> s
+  | TsType.EnumRef name   -> $"{ENUM_NS}.{name}"
   | TsType.Generic(n, t)  -> sprintf "%s<%s>" n t
   | TsType.SpecificGeneric(n,ts) 
                           -> sprintf "%s<%s>" n (ts |> Seq.map typeToString |> String.concat ", ")

@@ -10,7 +10,7 @@ let getLink (e: XrmEntity) (a: XrmAttribute) =
   | XrmAttributeType.MultiSelectPicklist
   | XrmAttributeType.State
   | XrmAttributeType.Status ->
-    let enumName = TsStringUtil.typeToString(a.varType).Split '.' |> Array.last
+    let enumName = match a.varType with TsType.EnumRef name -> name | _ -> ""
     let enum = e.optionSets |> List.tryFind (fun o -> o.name = enumName)
 
     match enum with

@@ -1,8 +1,6 @@
 ﻿module internal DG.XrmTypeScript.InterpretEntityMetadata
 
 open Utility
-open Constants
-
 open IntermediateRepresentation
 open InterpretOptionSetMetadata
 open Microsoft.Xrm.Sdk.Metadata
@@ -30,10 +28,10 @@ let interpretNormalAttribute aType (options:OptionSet option)  =
   match aType with
   | XrmAttributeType.Money -> TsType.Number, SpecialType.Money
     
-  | XrmAttributeType.MultiSelectPicklist  -> TsType.Custom $"{ENUM_NS}.{options.Value.name}", SpecialType.MultiSelectOptionSet
+  | XrmAttributeType.MultiSelectPicklist  -> TsType.EnumRef options.Value.name, SpecialType.MultiSelectOptionSet
   | XrmAttributeType.Picklist
   | XrmAttributeType.State
-  | XrmAttributeType.Status               -> TsType.Custom $"{ENUM_NS}.{options.Value.name}", SpecialType.OptionSet
+  | XrmAttributeType.Status               -> TsType.EnumRef options.Value.name, SpecialType.OptionSet
 
   | XrmAttributeType.Lookup
   | XrmAttributeType.PartyList
