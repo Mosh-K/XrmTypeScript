@@ -107,12 +107,12 @@ let defToFormattedVars (a, comment, _, _) =
   Variable.Create(formattedName a, TsType.String, comment, optional = true  ) 
 
 let getEntityRefDef nameFormat (a: XrmAttribute) =
-  nameFormat a, [ a, Comment.Create (a.displayName, colType = a.colType), a.varType, Some guidName ]
+  nameFormat a, [ a, Comment.Create (a.displayName, colType = a.colType, ?tes = a.targetEntitySets), a.varType, Some guidName ]
 
 let getResultDef (ent: XrmEntity) (attr: XrmAttribute) = 
   let vType = attr.varType
   let name = attr.logicalName
-  let comment = Comment.Create(attr.displayName, colType = attr.colType, link = getLink ent attr)
+  let comment = Comment.Create(attr.displayName, colType = attr.colType, ?tes = attr.targetEntitySets, link = getLink ent attr)
 
   match attr.specialType with
   | SpecialType.EntityReference -> getEntityRefDef guidName attr
@@ -165,7 +165,7 @@ let getLookupNameVariable (a: XrmAttribute) =
       Variable.Create(
         lookupName a,
         unionType,
-        Comment.Create(a.displayName, colType = a.colType),
+        Comment.Create(a.displayName, colType = a.colType, ?tes = a.targetEntitySets),
         optional = true
       )
     )

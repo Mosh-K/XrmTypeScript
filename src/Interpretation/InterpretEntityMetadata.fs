@@ -7,59 +7,49 @@ open IntermediateRepresentation
 open InterpretOptionSetMetadata
 open Microsoft.Xrm.Sdk.Metadata
 
-  
-let toSome convertFunc (nullable: System.Nullable<'a>) =
-  match nullable.HasValue with
-  | true -> nullable.GetValueOrDefault() |> convertFunc
-  | false -> TsType.Any
 
 let typeConv = function   
-  | AttributeTypeCode.Boolean   -> TsType.Boolean
-  | AttributeTypeCode.DateTime  -> TsType.Date
+  | XrmAttributeType.ManagedProperty
+  | XrmAttributeType.Boolean   -> TsType.Boolean
+  | XrmAttributeType.DateTime  -> TsType.Date
     
-  | AttributeTypeCode.Memo      
-  | AttributeTypeCode.EntityName
-  | AttributeTypeCode.String    -> TsType.String
+  | XrmAttributeType.Memo
+  | XrmAttributeType.EntityName
+  | XrmAttributeType.String     -> TsType.String
 
-  | AttributeTypeCode.Integer
-  | AttributeTypeCode.Double  
-  | AttributeTypeCode.BigInt    
-  | AttributeTypeCode.Money     
-  | AttributeTypeCode.Picklist  
-  | AttributeTypeCode.State     
-  | AttributeTypeCode.Status    -> TsType.Number
+  | XrmAttributeType.Integer
+  | XrmAttributeType.Double
+  | XrmAttributeType.BigInt
+  | XrmAttributeType.Money
+  | XrmAttributeType.Picklist
+  | XrmAttributeType.State
+  | XrmAttributeType.Status     -> TsType.Number
   | _                           -> TsType.Any
 
-let interpretVirtualAttribute (a:AttributeMetadata) (options:OptionSet option) =
-  match a with
-  | :? MultiSelectPicklistAttributeMetadata -> Some (TsType.Custom $"{ENUM_NS}.{options.Value.name}", SpecialType.MultiSelectOptionSet)
-  | _ -> None
-
-
-let interpretNormalAttribute aType (a:AttributeMetadata) (options:OptionSet option)  =
+let interpretNormalAttribute aType (options:OptionSet option)  =
   match aType with
-  | AttributeTypeCode.Money     -> TsType.Number, SpecialType.Money
+  | XrmAttributeType.Money -> TsType.Number, SpecialType.Money
     
-  | AttributeTypeCode.Picklist
-  | AttributeTypeCode.State
-  | AttributeTypeCode.Status    -> TsType.Custom $"{ENUM_NS}.{options.Value.name}", SpecialType.OptionSet
+  | XrmAttributeType.MultiSelectPicklist  -> TsType.Custom $"{ENUM_NS}.{options.Value.name}", SpecialType.MultiSelectOptionSet
+  | XrmAttributeType.Picklist
+  | XrmAttributeType.State
+  | XrmAttributeType.Status               -> TsType.Custom $"{ENUM_NS}.{options.Value.name}", SpecialType.OptionSet
 
-  | AttributeTypeCode.Lookup    
-  | AttributeTypeCode.PartyList  
-  | AttributeTypeCode.Customer  
-  | AttributeTypeCode.Owner     -> TsType.String, SpecialType.EntityReference
+  | XrmAttributeType.Lookup
+  | XrmAttributeType.PartyList
+  | XrmAttributeType.Customer
+  | XrmAttributeType.Owner                -> TsType.String, SpecialType.EntityReference
         
-  | AttributeTypeCode.Uniqueidentifier 
-                                -> TsType.String, SpecialType.Guid
+  | XrmAttributeType.Uniqueidentifier     -> TsType.String, SpecialType.Guid
 
-  | AttributeTypeCode.Decimal   -> toSome typeConv a.AttributeType, SpecialType.Decimal
-  | _                           -> toSome typeConv a.AttributeType, SpecialType.Default
+  | XrmAttributeType.Decimal              -> typeConv aType, SpecialType.Decimal
+  | _                                     -> typeConv aType, SpecialType.Default
 
 
 let interpretAttribute (nameMap: Map<string, EntityInfo>) labelMapping (a: AttributeMetadata) =
-  let aType = a.AttributeType.GetValueOrDefault()
+  let aType = XrmAttributeType.fromDisplayName a.AttributeTypeName
   if a.AttributeOf <> null ||
-      (aType = AttributeTypeCode.Virtual && a.AttributeTypeName <> AttributeTypeDisplayName.MultiSelectPicklistType)||
+      aType = XrmAttributeType.Virtual ||
       a.LogicalName.StartsWith("yomi") then None, None
   else
 
@@ -81,26 +71,20 @@ let interpretAttribute (nameMap: Map<string, EntityInfo>) labelMapping (a: Attri
       |> Some
     | _ -> None
 
-  let vTypeOption = 
-    match aType with
-    | AttributeTypeCode.Virtual -> interpretVirtualAttribute a options
-    | _ -> Some (interpretNormalAttribute aType a options)
+  let vType, sType = interpretNormalAttribute aType options
     
-  match vTypeOption with
-  | None -> None, None
-  | Some (vType, sType) ->
-    options, Some {
-      XrmAttribute.schemaName = a.SchemaName
-      logicalName = a.LogicalName
-      varType = vType
-      specialType = sType
-      colType = XrmAttributeType.fromDisplayName a.AttributeTypeName
-      targetEntitySets = targetEntitySets
-      readable = a.IsValidForRead.GetValueOrDefault(false)
-      createable = a.IsValidForCreate.GetValueOrDefault(false)
-      updateable = a.IsValidForUpdate.GetValueOrDefault(false)
-      displayName = getLabel a.DisplayName
-    }
+  options, Some {
+    XrmAttribute.schemaName = a.SchemaName
+    logicalName = a.LogicalName
+    varType = vType
+    specialType = sType
+    colType = aType
+    targetEntitySets = targetEntitySets
+    readable = a.IsValidForRead.GetValueOrDefault(false)
+    createable = a.IsValidForCreate.GetValueOrDefault(false)
+    updateable = a.IsValidForUpdate.GetValueOrDefault(false)
+    displayName = getLabel a.DisplayName
+  }
 
 let sanitizeNavigationProptertyName string =
     if string = null then "navigationPropertyNameNotDefined"

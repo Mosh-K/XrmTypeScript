@@ -53,11 +53,11 @@ and Comment =
     relType: RelType option
     tab: string
     link: string }
-  static member Create(?displayName, ?label, ?colType, ?targetEntitySets, ?relType, ?tab, ?link) =
+  static member Create(?displayName, ?label, ?colType, ?tes, ?relType, ?tab, ?link) =
     { displayName = defaultArg displayName ""
       label = defaultArg label ""
       colType = colType
-      targetEntitySets = targetEntitySets
+      targetEntitySets = tes
       relType = relType
       tab = defaultArg tab ""
       link = defaultArg link "" }
@@ -70,7 +70,9 @@ and Comment =
       match c.targetEntitySets with
       | None | Some [||] -> None
       | Some tes ->
-        let formatted = tes |> Array.map (fun (ln, _, dn) -> $"{dn} (`{ln}`)") |> String.concat " | "
+        let maxDisplay = 5
+        let shown = tes |> Array.truncate maxDisplay |> Array.map (fun (ln, _, dn) -> $"{dn} (`{ln}`)") |> String.concat " | "
+        let formatted = if tes.Length <= maxDisplay then shown else $"{shown} | +{tes.Length - maxDisplay} more"
         Some $"Table: {formatted}"
     let relTypeLine = c.relType |> Option.map (fun t -> $"Relationship Type: {t}")
     let linkLine = if String.IsNullOrWhiteSpace c.link then None else Some (sprintf "{@link %s}" (c.link.Trim()))

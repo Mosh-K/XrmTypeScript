@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Changed
+- Lookup JSDoc "Table:" lines now truncate to 5 target entities, appending `+N more` when there are additional targets
 - Refactored `Comment` type to use `XrmAttributeType` DU (24 SDK attribute types) instead of strings for type-safe formatting
 - Extracted `XrmAttributeType` and `RelType` DUs to `Domain.fs` for better organization and constraint satisfaction (Set operations in form intersection)
 - Moved formatting logic into `Comment.ToCommentStrings()` and `XrmAttributeType.fromDisplayName()` for cleaner separation of concerns
