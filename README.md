@@ -35,6 +35,24 @@ in PCF components, or in external TypeScript/JavaScript projects.
 3. Run `XrmTypeScript.exe`
 
 
+## Project Setup
+
+If you haven't worked with TypeScript tooling before, you'll need a `tsconfig.json` in your project root — the same root that contains your scripts and the generated typings folder.
+
+```json
+{
+  "compilerOptions": {
+    "allowJs": true,
+    // "checkJs": true,  // uncomment to get type errors in your JS files
+
+    "noEmit": true,
+
+    "moduleDetection": "force"
+  }
+}
+```
+
+
 ## Documentation
 
 - [Tool Arguments](docs/tool-arguments.md)
