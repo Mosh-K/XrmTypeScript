@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 ### Changed
+- Refactored `Comment` type to use `XrmAttributeType` DU (24 SDK attribute types) instead of strings for type-safe formatting
+- Extracted `XrmAttributeType` and `RelType` DUs to `Domain.fs` for better organization and constraint satisfaction (Set operations in form intersection)
+- Moved formatting logic into `Comment.ToCommentStrings()` and `XrmAttributeType.fromDisplayName()` for cleaner separation of concerns
 - Lookup logical name variables are now derived from attributes rather than relationships, using a union type of all target entity names; duplicate variable names are merged into union types instead of being renamed
 - Section control interfaces now include a JSDoc comment with the tab display name and a `{@link}` reference to the containing tab section interface
 - Added `{@link}` comments to `ui.tabs.get()`, `tab.sections.get()`, and `ui.quickForms.get()` overloads

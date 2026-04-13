@@ -56,16 +56,11 @@ let getTargetEntities (tes: string option) (a: XrmAttribute option) =
       let el = tes' |> Array.map (fun (l, _, _) -> l) |> Array.toList
       match el.IsEmpty with
       | true -> "\"NoTargets\""
-      | false -> List.fold(fun acc e -> sprintf "%s | \"%s\"" acc e) (sprintf "\"%s\"" el.Head) el.Tail
+      | false -> List.fold(fun acc e -> $"{acc} | \"{e}\"") ($"\"{el.Head}\"") el.Tail
 
 let getAttributeType = function
   | None -> TsType.Undefined
   | Some a -> a.varType
-let getTargetDisplayName (a: XrmAttribute) =
-    match a.targetEntitySets with
-    | None -> ""
-    | Some tes ->
-      tes |> Array.map (fun (_, _, dn) -> dn) |> String.concat " | "
 
 let getAttribute (enums:Map<string,TsType>) (entity: XrmEntity) (cField: ControlField): XrmFormAttribute option =
   if String.IsNullOrEmpty cField.dataFieldName then None else 
@@ -77,7 +72,7 @@ let getAttribute (enums:Map<string,TsType>) (entity: XrmEntity) (cField: Control
   let comment = 
     match attribute with
     | None -> Comment.Create cField.displayName
-    | Some attr -> Comment.Create(attr.displayName, colType = attr.typeName, table = getTargetDisplayName attr, link = getLink entity attr)
+    | Some attr -> Comment.Create(attr.displayName, colType = attr.colType, ?targetEntitySets = attr.targetEntitySets, link = getLink entity attr)
 
   let attrType = getAttributeType attribute
 
@@ -141,7 +136,7 @@ let getControl  (enums:Map<string,TsType>) (entity: XrmEntity) (cField:ControlFi
     | None -> Comment.Create cField.displayName
     | Some attr ->
       let label = if cField.displayName.Trim() <> attr.displayName.Trim() then cField.displayName else ""
-      Comment.Create(attr.displayName, label = label, colType = attr.typeName, table = getTargetDisplayName attr, link = getLink entity attr)
+      Comment.Create(attr.displayName, label = label, colType = attr.colType, ?targetEntitySets = attr.targetEntitySets, link = getLink entity attr)
     
   let cType = 
     match cField.controlClass with
@@ -297,9 +292,9 @@ let getQuickViewFormControls : ControlField list -> XrmFormQuickViewForm list =
 
 let getControlFields (entity: XrmEntity) (form: XElement) : ControlField list =
     let controlDescriptions =
-      form.Descendants(XName.Get("controlDescription"))
+      form.Descendants(XName.Get "controlDescription")
       |> Seq.choose (fun cd -> 
-        cd.Elements(XName.Get("customControl"))
+        cd.Elements(XName.Get "customControl")
         |> Seq.choose (fun cc -> 
           match getValue cc "id" with 
           | null -> None 
@@ -307,10 +302,10 @@ let getControlFields (entity: XrmEntity) (form: XElement) : ControlField list =
         |> Seq.tryHead)
       |> Map.ofSeq
 
-    form.Descendants(XName.Get("cell"))
-    |> Seq.filter (fun cell -> cell.Descendants(XName.Get("control")) |> Seq.isEmpty |> not) // Filter out cells that don't have a control
+    form.Descendants(XName.Get "cell")
+    |> Seq.filter (fun cell -> cell.Descendants(XName.Get "control") |> Seq.isEmpty |> not) // Filter out cells that don't have a control
     |> Seq.map (fun cell -> 
-      let ctrl = cell.Descendants(XName.Get("control")) |> Seq.head
+      let ctrl = cell.Descendants(XName.Get "control") |> Seq.head
       
       let id = getValue ctrl "id"
       let classId = getValue ctrl "classid"
@@ -319,23 +314,23 @@ let getControlFields (entity: XrmEntity) (form: XElement) : ControlField list =
       let datafieldname = getValue ctrl "datafieldname"
 
       let targetEntities = 
-        let parms = ctrl.Descendants(XName.Get("parameters")) 
+        let parms = ctrl.Descendants(XName.Get "parameters") 
         if Seq.isEmpty parms then
           let rel = getValue ctrl "relationship"
           entity.allRelationships
           |> List.choose (fun r -> if r.schemaName = rel then Some r.relatedSetName else None)
         else
           parms
-          |> Seq.collect (fun p -> p.Elements(XName.Get("TargetEntityType")))
+          |> Seq.collect (fun p -> p.Elements(XName.Get "TargetEntityType"))
           |> Seq.map (fun e -> e.Value)
           |> Seq.toList
 
       let quickViewForms =
-        let parms = ctrl.Descendants(XName.Get("parameters"))
+        let parms = ctrl.Descendants(XName.Get "parameters")
         if Seq.isEmpty parms then None
         else
           parms
-          |> Seq.collect (fun p -> p.Elements(XName.Get("QuickForms")))
+          |> Seq.collect (fun p -> p.Elements(XName.Get "QuickForms"))
           |> Seq.map (fun e -> e.Value)
           |> Seq.toList
           |> function
@@ -359,9 +354,9 @@ let getControlFields (entity: XrmEntity) (form: XElement) : ControlField list =
          targetEntitySets = None; 
          quickViewForms = quickViewForms }
 
-      if(targetEntities.Length > 0) then
+      if targetEntities.Length > 0 then
         let tes =
-          Seq.fold(fun acc e -> sprintf "%s | \"%s\"" acc e) (sprintf "\"%s\"" targetEntities.Head) targetEntities.Tail
+          Seq.fold(fun acc e -> $"{acc} | \"{e}\"") ($"\"{targetEntities.Head}\"") targetEntities.Tail
         {baseControl with targetEntitySets = Some tes}
       else baseControl
     )

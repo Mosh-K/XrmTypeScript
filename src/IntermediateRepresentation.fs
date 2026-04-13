@@ -26,7 +26,7 @@ type XrmAttribute = {
   varType: TsType
   specialType: SpecialType
   targetEntitySets: (string * string * string)[] option
-  typeName: string
+  colType: XrmAttributeType
   readable: bool
   createable: bool
   updateable: bool
@@ -37,7 +37,7 @@ type XrmRelationship = {
   schemaName: string
   attributeName: string
   displayName: string
-  relType: string
+  relType: RelType
   relatedSetName: string
   relatedSchemaName: string
   navProp: string

@@ -48,26 +48,31 @@ and Variable =
 and Comment =
   { displayName: string
     label: string
-    colType: string
-    table: string
-    relType: string
+    colType: XrmAttributeType option
+    targetEntitySets: (string * string * string)[] option
+    relType: RelType option
     tab: string
     link: string }
-  static member Create(?displayName, ?label, ?colType, ?table, ?relType, ?tab, ?link) =
+  static member Create(?displayName, ?label, ?colType, ?targetEntitySets, ?relType, ?tab, ?link) =
     { displayName = defaultArg displayName ""
       label = defaultArg label ""
-      colType = defaultArg colType ""
-      table = defaultArg table ""
-      relType = defaultArg relType ""
+      colType = colType
+      targetEntitySets = targetEntitySets
+      relType = relType
       tab = defaultArg tab ""
       link = defaultArg link "" }
   member c.ToCommentStrings() =
     let dsLine = if String.IsNullOrWhiteSpace c.displayName then None else Some $"**{c.displayName.Trim()}**"
-    let tabLine = if String.IsNullOrWhiteSpace c.tab then None else Some $"Tab: *{c.tab.Trim()}*"
+    let tabLine = if String.IsNullOrWhiteSpace c.tab then None else Some $"Tab: {c.tab.Trim()}"
     let labelLine = if String.IsNullOrWhiteSpace c.label then None else Some $"Label: {c.label.Trim()}"
-    let colTypeLine = if String.IsNullOrWhiteSpace c.colType then None else Some $"Column Type: *{c.colType.Trim()}*"
-    let tableLine = if String.IsNullOrWhiteSpace c.table then None else Some $"Table: *{c.table.Trim()}*"
-    let relTypeLine = if String.IsNullOrWhiteSpace c.relType then None else Some $"Relationship Type: *{c.relType.Trim()}*"
+    let colTypeLine = c.colType |> Option.map (fun t -> $"Column Type: {t}")
+    let tableLine =
+      match c.targetEntitySets with
+      | None | Some [||] -> None
+      | Some tes ->
+        let formatted = tes |> Array.map (fun (ln, _, dn) -> $"{dn} (`{ln}`)") |> String.concat " | "
+        Some $"Table: {formatted}"
+    let relTypeLine = c.relType |> Option.map (fun t -> $"Relationship Type: {t}")
     let linkLine = if String.IsNullOrWhiteSpace c.link then None else Some (sprintf "{@link %s}" (c.link.Trim()))
 
     let lines = [ dsLine; tabLine; labelLine; colTypeLine; tableLine; relTypeLine; linkLine ] |> List.choose id

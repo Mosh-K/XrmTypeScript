@@ -5,7 +5,6 @@ open TsStringUtil
 open Constants
 open InterpretCommon
 open IntermediateRepresentation
-open Microsoft.Xrm.Sdk.Metadata
 
 
 let INTERNAL_NS = "_"
@@ -18,7 +17,7 @@ let currencyId = {
   schemaName = "TransactionCurrencyId"
   specialType = SpecialType.EntityReference
   varType = TsType.String
-  typeName = AttributeTypeDisplayName.LookupType.Value
+  colType = XrmAttributeType.Lookup
   targetEntitySets = Some [| "transactioncurrency", "transactioncurrencies", "Currency" |]
   readable = true
   createable = true
@@ -108,12 +107,12 @@ let defToFormattedVars (a, comment, _, _) =
   Variable.Create(formattedName a, TsType.String, comment, optional = true  ) 
 
 let getEntityRefDef nameFormat (a: XrmAttribute) =
-  nameFormat a, [ a, Comment.Create (a.displayName, colType = a.typeName), a.varType, Some guidName ]
+  nameFormat a, [ a, Comment.Create (a.displayName, colType = a.colType), a.varType, Some guidName ]
 
 let getResultDef (ent: XrmEntity) (attr: XrmAttribute) = 
   let vType = attr.varType
   let name = attr.logicalName
-  let comment = Comment.Create(attr.displayName, colType = attr.typeName, link = getLink ent attr)
+  let comment = Comment.Create(attr.displayName, colType = attr.colType, link = getLink ent attr)
 
   match attr.specialType with
   | SpecialType.EntityReference -> getEntityRefDef guidName attr
@@ -166,7 +165,7 @@ let getLookupNameVariable (a: XrmAttribute) =
       Variable.Create(
         lookupName a,
         unionType,
-        Comment.Create(a.displayName, colType = a.typeName),
+        Comment.Create(a.displayName, colType = a.colType),
         optional = true
       )
     )

@@ -94,7 +94,7 @@ let interpretAttribute (nameMap: Map<string, EntityInfo>) labelMapping (a: Attri
       logicalName = a.LogicalName
       varType = vType
       specialType = sType
-      typeName = a.AttributeTypeName.Value
+      colType = XrmAttributeType.fromDisplayName a.AttributeTypeName
       targetEntitySets = targetEntitySets
       readable = a.IsValidForRead.GetValueOrDefault(false)
       createable = a.IsValidForCreate.GetValueOrDefault(false)
@@ -134,7 +134,7 @@ let interpretRelationship (nameMap: Map<string, EntityInfo>) referencing (attrib
             if referencing then rel.ReferencingAttribute 
             else rel.ReferencedAttribute
           displayName = eInfo.DisplayName
-          relType = if referencing then "ManyToOne" else "OneToMany"
+          relType = if referencing then RelType.ManyToOne else RelType.OneToMany
           navProp = 
             if referencing then rel.ReferencingEntityNavigationPropertyName
             else rel.ReferencedEntityNavigationPropertyName
@@ -160,7 +160,7 @@ let interpretM2MRelationship (nameMap: Map<string, EntityInfo>) logicalName (rel
       { XrmRelationship.schemaName = rel.SchemaName 
         attributeName = rel.SchemaName
         displayName = eInfo.DisplayName
-        relType = "ManyToMany"
+        relType = RelType.ManyToMany
         navProp = 
           if logicalName = rel.Entity2LogicalName then rel.Entity1NavigationPropertyName
           else rel.Entity2NavigationPropertyName

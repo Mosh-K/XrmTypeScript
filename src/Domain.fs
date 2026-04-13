@@ -6,6 +6,67 @@ open Microsoft.Xrm.Sdk.Metadata
 open Microsoft.Xrm.Sdk.Client
 open System.Runtime.Serialization
 
+type RelType =
+  | ManyToOne
+  | OneToMany
+  | ManyToMany
+
+type XrmAttributeType =
+  | Boolean
+  | Customer
+  | DateTime
+  | Decimal
+  | Double
+  | Integer
+  | Lookup
+  | Memo
+  | Money
+  | Owner
+  | PartyList
+  | Picklist
+  | State
+  | Status
+  | String
+  | Uniqueidentifier
+  | CalendarRules
+  | Virtual
+  | BigInt
+  | ManagedProperty
+  | EntityName
+  | Image
+  | MultiSelectPicklist
+  | File
+
+module XrmAttributeType =
+  let private map = [
+    AttributeTypeDisplayName.BooleanType,             Boolean
+    AttributeTypeDisplayName.CustomerType,            Customer
+    AttributeTypeDisplayName.DateTimeType,            DateTime
+    AttributeTypeDisplayName.DecimalType,             Decimal
+    AttributeTypeDisplayName.DoubleType,              Double
+    AttributeTypeDisplayName.IntegerType,             Integer
+    AttributeTypeDisplayName.LookupType,              Lookup
+    AttributeTypeDisplayName.MemoType,                Memo
+    AttributeTypeDisplayName.MoneyType,               Money
+    AttributeTypeDisplayName.OwnerType,               Owner
+    AttributeTypeDisplayName.PartyListType,           PartyList
+    AttributeTypeDisplayName.PicklistType,            Picklist
+    AttributeTypeDisplayName.StateType,               State
+    AttributeTypeDisplayName.StatusType,              Status
+    AttributeTypeDisplayName.StringType,              String
+    AttributeTypeDisplayName.UniqueidentifierType,    Uniqueidentifier
+    AttributeTypeDisplayName.CalendarRulesType,       CalendarRules
+    AttributeTypeDisplayName.VirtualType,             Virtual
+    AttributeTypeDisplayName.BigIntType,              BigInt
+    AttributeTypeDisplayName.ManagedPropertyType,     ManagedProperty
+    AttributeTypeDisplayName.EntityNameType,          EntityName
+    AttributeTypeDisplayName.ImageType,               Image
+    AttributeTypeDisplayName.MultiSelectPicklistType, MultiSelectPicklist
+    AttributeTypeDisplayName.FileType,                File ]
+
+  let fromDisplayName t =
+    map |> List.tryFind (fst >> (=) t) |> Option.map snd |> Option.defaultValue Virtual
+
 type Version = int * int * int * int
 type Intersect = string * Guid[]
 
