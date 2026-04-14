@@ -13,7 +13,7 @@ type XrmTypeScript private () =
     (
       url,
       ?method,
-      ?appId,
+      ?clientId,
       ?clientSecret,
       ?returnUrl,
       ?connectionString,
@@ -37,7 +37,7 @@ type XrmTypeScript private () =
     let xrmAuth =
       { XrmAuthSettings.url = Uri(url)
         method = method
-        clientId = appId
+        clientId = clientId
         clientSecret = clientSecret
         returnUrl = returnUrl
         connectionString = connectionString 

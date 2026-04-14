@@ -87,7 +87,7 @@ type Args private () =
       description="Connection method"
       required=false }
 
-    { command="appId"
+    { command="clientId"
       altCommands=["id"]
       description="Azure Application Id"
       required=false }
@@ -181,7 +181,7 @@ type Args private () =
 
   // Usage
   static member usageString = 
-    @"Usage: XrmTypeScript.exe /url:https://INSTANCE.crm4.dynamics.com /method:ClientSecret /id:<appId> /cs:<clientSecret>"
+    @"Usage: XrmTypeScript.exe /url:https://INSTANCE.crm4.dynamics.com /method:ClientSecret /id:<clientId> /cs:<clientSecret>"
   
   static member helpArgs = [ "?"; "help"; "-h"; "-help"; "--help"; "/h"; "/help" ] |> Set.ofList
 
@@ -194,7 +194,7 @@ type Args private () =
     config.AllKeys |> Array.iter config.Remove
     config.Add("url", "https://INSTANCE.crm4.dynamics.com")
     config.Add("method", "ClientSecret")
-    config.Add("appId", "")
+    config.Add("clientId", "")
     config.Add("clientSecret", "")
     config.Add("out", "../typings/XRM")
     config.Add("solutions", "")

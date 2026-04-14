@@ -1,8 +1,9 @@
 # Changelog
 
-## [Unreleased]
+## [1.2.0] - 2026-04-14
 ### Changed
 - `TabUnion` and `QuickFormUnion` type aliases replaced with `TabMap` and `QuickFormMap` interfaces, mapping names to their typed counterparts (consistent with `AttributeMap` and `ControlMap`)
+- Renamed `appId` config key and parameter to `clientId` for clarity
 
 ## [1.1.0] - 2026-04-13
 ### Changed
@@ -23,5 +24,6 @@
 ### Added
 - Initial public release
 
+[1.2.0]: https://github.com/Mosh-K/XrmTypeScript/releases/tag/v1.2.0
 [1.1.0]: https://github.com/Mosh-K/XrmTypeScript/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Mosh-K/XrmTypeScript/releases/tag/v1.0.0

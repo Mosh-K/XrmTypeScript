@@ -16,20 +16,28 @@ in PCF components, or in external TypeScript/JavaScript projects.
 ## Getting Started
 
 1. Download and unzip the latest release from [GitHub Releases](https://github.com/Mosh-K/XrmTypeScript/releases)
+
+   > You can verify the build attestation with the [GitHub CLI](https://cli.github.com/): `gh attestation verify --repo Mosh-K/XrmTypeScript XrmTypeScript-vX.X.X-bin.zip`
+
+&nbsp;
+
 2. Edit `XrmTypeScript.exe.config` with your environment details:
 
 ```xml
-<appSettings>
-  <add key="url" value="https://INSTANCE.crm4.dynamics.com" />
-  <add key="method" value="ClientSecret" />
-  <add key="appId" value="YOUR_APP_ID" />
-  <add key="clientSecret" value="YOUR_CLIENT_SECRET" />
-
-  <add key="out" value="../typings/XRM" />
-  <add key="solutions" value="" />
-  <add key="entities" value="account, contact" />
-  <add key="web" value="true" />
-</appSettings>
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <appSettings>
+    <add key="url" value="https://INSTANCE.crm4.dynamics.com" />
+    <add key="method" value="ClientSecret" />
+    <add key="clientId" value="YOUR_CLIENT_ID" />
+    <add key="clientSecret" value="YOUR_CLIENT_SECRET" />
+  
+    <add key="out" value="../typings/XRM" />
+    <add key="solutions" value="" />
+    <add key="entities" value="account, contact" />
+    <add key="web" value="true" />
+  </appSettings>
+</configuration>
 ```
 
 3. Run `XrmTypeScript.exe`
@@ -223,7 +231,7 @@ Arguments can be passed via the `XrmTypeScript.exe.config` file or directly from
 | :--------------- | :--------- | :------------------------------------------- |
 | url              |            | URL to the organization                      |
 | method           | m          | OAuth, ClientSecret or ConnectionString      |
-| appId            | id         | Azure Application Id                         |
+| clientId         | id         | Azure Application Id                         |
 | clientSecret     | cs         | Client secret for the Azure Application      |
 | returnUrl        |            | Return URL of the Azure Application          |
 | connectionString |            | Connection String used for authentication    |
