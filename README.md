@@ -51,7 +51,7 @@ If you haven't worked with TypeScript tooling before, you'll need a `tsconfig.js
 ```json
 {
   "compilerOptions": {
-    "target": "ES6",
+    "target": "ESNext",
     "allowJs": true,
     // "checkJs": true,  // uncomment to get type errors in your JS files
     "moduleDetection": "force",
