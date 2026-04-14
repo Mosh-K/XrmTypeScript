@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### Changed
+- `TabUnion` and `QuickFormUnion` type aliases replaced with `TabMap` and `QuickFormMap` interfaces, mapping names to their typed counterparts (consistent with `AttributeMap` and `ControlMap`)
 
 ## [1.1.0] - 2026-04-13
 ### Changed

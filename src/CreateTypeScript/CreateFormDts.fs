@@ -53,8 +53,8 @@ let SectionControlsNs = "SectionControls"
 
 let AttrMap = "AttributeMap"
 let CtrlMap = "ControlMap"
-let TabUnion  = "TabUnion"
-let QuickFormUnion = "QuickFormUnion"
+let TabMap = "TabMap"
+let QuickFormMap = "QuickFormMap"
 
 let unionWithNull t canBeNull = 
   if canBeNull
@@ -121,28 +121,21 @@ let getDefaultFuncs funcName returnType =
       TsType.Array(TsType.Custom returnType)
     ) ]
 
-let getKeyofFunction (funcName: string) (map: string) =
+let getKeyofFunc (funcName: string) (map: string) =
     Function.Create(
         $"{funcName}<T extends keyof {map}>",
         [ Variable.Create("name", TsType.Custom "T") ],
         TsType.Custom $"{map}[T]"
     )
 
-let getNameofFunction (unionName: string) (returnType: string) = 
-    Function.Create(
-        "get",
-        [ Variable.Create("name", TsType.Custom unionName) ],
-        TsType.Custom returnType
-    )
-
 /// Generate Xrm.Page.data.entity.attributes.get(<string>) functions.
 let attributeCollection  =
-  let keyofFunc = getKeyofFunction "get" AttrMap
+  let keyofFunc = getKeyofFunc "get" AttrMap
   let defaultFuncs = getDefaultFuncs "get" Attributes.Base
   Interface.Create(Interfaces.Attributes, extends = [ Collections.Attributes ], funcs = keyofFunc :: defaultFuncs)
 
 /// Generate Xrm.Page.data.entity.attributes Map.
-let getAttributeCollectionMap (attributes: XrmFormAttribute list) =
+let getAttributeMap (attributes: XrmFormAttribute list) =
   let getVars =
     attributes
     |> List.map (fun (name, _, ty, canBeNull) ->
@@ -155,7 +148,7 @@ let includeControl (name: string) (formType: string option) crmVersion =
     (not (name.StartsWith("header_")) && not (name.StartsWith("footer_")))
       || (crmVersion .>= (6,0,0,0) && not(formType.IsSome && formType.Value.Equals("Quick")))
 
-let getControlCollectionFuncs (controls: XrmFormControl list) (formType: string option) (crmVersion: Version) =
+let getSectionControlFuncs (controls: XrmFormControl list) (formType: string option) (crmVersion: Version) =
     controls
     |> List.map (fun (name, comment, attr, cType, isBpf, canBeNull) ->
       let paramType = getConstantType name
@@ -169,12 +162,12 @@ let getControlCollectionFuncs (controls: XrmFormControl list) (formType: string 
 
 /// Generate Xrm.Page.ui.controls.get(<string>) functions.
 let controlCollection =
-  let keyofFunc = getKeyofFunction "get" CtrlMap
+  let keyofFunc = getKeyofFunc "get" CtrlMap
   let defaultFuncs = getDefaultFuncs "get" Controls.Base
   Interface.Create(Interfaces.Controls, extends = [ Collections.Controls ], funcs = keyofFunc :: defaultFuncs)
 
 /// Generate Xrm.Page.ui.controls map.
-let getControlCollectionMap (form: XrmForm) (crmVersion: Version) =
+let getControlMap (form: XrmForm) (crmVersion: Version) =
   let getVars = 
     form.controls
     |> List.map (fun (name, _, aType, cType, _, canBeNull) ->
@@ -212,24 +205,26 @@ let getQuickViewFormCollection (quickViewForms: XrmFormQuickViewForm list) (form
         Comment.Create(displayName, link = target)
       ))
 
-  let nameofFuncs =
-    match quickViewForms with
-    | [] -> []
-    | _ -> [ getNameofFunction QuickFormUnion Controls.QuickForm ]
+  let keyofFuncs = [ getKeyofFunc "get" QuickFormMap ]
 
   let defaultFuncs = getDefaultFuncs "get" Controls.QuickForm
 
   Interface.Create(
     Interfaces.QuickForms,
     extends = [ Collections.QuickForms ],
-    funcs = getFuncs @ nameofFuncs @ defaultFuncs
+    funcs = getFuncs @ keyofFuncs @ defaultFuncs
   )
 
-let getQuickFormNames (quickViewForms: XrmFormQuickViewForm list) =
-  let getNames =
+let getQuickFormMap (quickViewForms: XrmFormQuickViewForm list) (formMap: Map<System.Guid, XrmForm>) =
+  let getVars =
     quickViewForms
-    |> List.map (fun (name, _, _) -> getConstantType name)
-  QuickFormUnion, TsType.Union getNames
+    |> List.map (fun (name, _, (_, formId)) ->
+      let returnType =
+        match formMap.TryGetValue formId with
+        | true, form -> TsType.Custom $"{nsName form}.{form.name}"
+        | false, _ -> TsType.Custom Controls.QuickForm
+      Variable.Create($"\"{name}\"", returnType))
+  Interface.Create(QuickFormMap, vars = getVars)
   
 /// Generate Xrm.Page.ui.tabs.get(<string>) functions.
 let getTabCollection (tabs: XrmFormTab list) =
@@ -244,15 +239,16 @@ let getTabCollection (tabs: XrmFormTab list) =
         TsType.Generic(Controls.Tab, target),
         Comment.Create(t.displayName, link = target)))
 
-  let nameofFunc = getNameofFunction TabUnion Controls.Tab
+  let keyofFunc = getKeyofFunc "get" TabMap
   let defaultFuncs =  getDefaultFuncs  "get" Controls.Tab
-  Interface.Create(Interfaces.Tabs, extends = [ Collections.Tabs ], funcs = getFuncs @ [ nameofFunc ] @ defaultFuncs)
+  Interface.Create(Interfaces.Tabs, extends = [ Collections.Tabs ], funcs = getFuncs @ [ keyofFunc ] @ defaultFuncs)
 
-let getTabNames (tabs: XrmFormTab list) =
-  let getNames =
+let getTabMap (tabs: XrmFormTab list) =
+  let getVars =
     tabs
-    |> List.map (fun t -> getConstantType t.name)
-  TabUnion, TsType.Union getNames
+    |> List.map (fun t ->
+      Variable.Create($"\"{t.name}\"", TsType.Generic(Controls.Tab, $"{TabSectionsNs}.{t.iname}")))
+  Interface.Create(TabMap, vars = getVars)
 
 /// Generate Xrm.Page.ui.tabs.get(<string>).sections.get(<string>) functions.
 let getTabSections (tabs: XrmFormTab list) =
@@ -283,7 +279,7 @@ let getSectionControls (sections: XrmFormSection list) (formType: string option)
             Comment.Create(s.displayName, tab = s.tabDescription, link = $"{TabSectionsNs}.{s.tabIname}"),
             extends = [ Collections.Controls ],
             funcs =
-                getControlCollectionFuncs s.controls formType crmVersion
+                getSectionControlFuncs s.controls formType crmVersion
                 @ getDefaultFuncs "get" Controls.Base
         ))
 
@@ -308,7 +304,7 @@ let getAttributeFuncs form (crmVersion: Version) =
       let returnType = getAttributeInterface ty canBeNull
       Function.Create("getAttribute", 
         [ Variable.Create("attributeName", paramType) ], returnType, ?comment = comment))
-  let keyofFunc: Function = getKeyofFunction "getAttribute" $"{form.name}.{AttrMap}"
+  let keyofFunc: Function = getKeyofFunc "getAttribute" $"{form.name}.{AttrMap}"
   attrFuncs @ [keyofFunc] @ getDefaultFuncs "getAttribute" Attributes.Base
 
 /// Generate Xrm.Page.getControl(<string>) functions.
@@ -325,7 +321,7 @@ let getControlFuncs form (crmVersion: Version)=
                [ Variable.Create("controlName", paramType) ], returnType, ?comment = comment))
       )
     |> List.choose id
-  let keyofFuncs = if not (form.formType = Some "Quick") then [getKeyofFunction "getControl" $"{form.name}.{CtrlMap}"] else []
+  let keyofFuncs = if not (form.formType = Some "Quick") then [getKeyofFunc "getControl" $"{form.name}.{CtrlMap}"] else []
   ctrlFuncs @ keyofFuncs @ getDefaultFuncs "getControl" Controls.Base
 
 /// Generate internal namespace for keeping track all the collections.
@@ -337,13 +333,10 @@ let getFormNamespace (form: XrmForm) formMap crmVersion =
         controlCollection
         getQuickViewFormCollection form.quickViewForms formMap
         getTabCollection form.tabs
-        getAttributeCollectionMap form.attributes
-        getControlCollectionMap form crmVersion ],
-    typeDecs =
-      match form.quickViewForms with
-      | [] -> []
-      | _ -> [ getQuickFormNames form.quickViewForms ]
-      @ [ getTabNames form.tabs ],
+        getAttributeMap form.attributes
+        getControlMap form crmVersion
+        getQuickFormMap form.quickViewForms formMap
+        getTabMap form.tabs ],
     namespaces =
       [ Namespace.Create(TabSectionsNs, interfaces = getTabSections form.tabs)
         Namespace.Create(
