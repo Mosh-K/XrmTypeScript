@@ -17,7 +17,8 @@ in PCF components, or in external TypeScript/JavaScript projects.
 
 1. Download and unzip the latest release from [GitHub Releases](https://github.com/Mosh-K/XrmTypeScript/releases)
 
-   > You can verify the build attestation with the [GitHub CLI](https://cli.github.com/): `gh attestation verify --repo Mosh-K/XrmTypeScript XrmTypeScript-vX.X.X-bin.zip`
+   > You can verify the build attestation with the [GitHub CLI](https://cli.github.com/):  
+   > `gh attestation verify --repo Mosh-K/XrmTypeScript XrmTypeScript-vX.X.X-bin.zip`
 
 &nbsp;
 
