@@ -2,7 +2,7 @@
 
 open System
 open System.IO
-open System.Configuration
+open System.Reflection
 
 type ArgInfo = 
   { command: string
@@ -189,16 +189,9 @@ type Args private () =
     File.Exists(AppDomain.CurrentDomain.SetupInformation.ConfigurationFile) |> not
 
   static member genConfig () =
-    let configmanager = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None)
-    let config = configmanager.AppSettings.Settings
-    config.AllKeys |> Array.iter config.Remove
-    config.Add("url", "https://INSTANCE.crm4.dynamics.com")
-    config.Add("method", "ClientSecret")
-    config.Add("clientId", "")
-    config.Add("clientSecret", "")
-    config.Add("out", "../typings/XRM")
-    config.Add("solutions", "")
-    config.Add("entities", "account, contact")
-    config.Add("web", "true")
-    configmanager.Save(ConfigurationSaveMode.Modified)
+    let assembly = Assembly.GetExecutingAssembly()
+    use stream = assembly.GetManifestResourceStream("XrmTypeScript.exe.config")
+    let configPath = AppDomain.CurrentDomain.SetupInformation.ConfigurationFile
+    use fileStream = File.Create(configPath)
+    stream.CopyTo(fileStream)
     printfn "A configuration file has been set up with dummy values. Change them to fit your environment."

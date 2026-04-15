@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.3.0] - 2026-04-15
+### Changed
+- Release zip reorganized: all DLLs (except `FSharp.Core.dll`) moved into a `lib/` subdirectory, keeping only user-facing files at the zip root
+- Config file (`XrmTypeScript.exe.config`) is now embedded as a resource and restored from it when missing, ensuring the `lib/` probing path is always preserved
+
 ## [1.2.0] - 2026-04-14
 ### Changed
 - `TabUnion` and `QuickFormUnion` type aliases replaced with `TabMap` and `QuickFormMap` interfaces, mapping names to their typed counterparts (consistent with `AttributeMap` and `ControlMap`)
@@ -24,6 +29,7 @@
 ### Added
 - Initial public release
 
+[1.3.0]: https://github.com/Mosh-K/XrmTypeScript/releases/tag/v1.3.0
 [1.2.0]: https://github.com/Mosh-K/XrmTypeScript/releases/tag/v1.2.0
 [1.1.0]: https://github.com/Mosh-K/XrmTypeScript/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Mosh-K/XrmTypeScript/releases/tag/v1.0.0

@@ -25,20 +25,17 @@ in PCF components, or in external TypeScript/JavaScript projects.
 2. Edit `XrmTypeScript.exe.config` with your environment details:
 
 ```xml
-<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-  <appSettings>
-    <add key="url" value="https://INSTANCE.crm4.dynamics.com" />
-    <add key="method" value="ClientSecret" />
-    <add key="clientId" value="YOUR_CLIENT_ID" />
-    <add key="clientSecret" value="YOUR_CLIENT_SECRET" />
+<appSettings>
+  <add key="url" value="https://INSTANCE.crm4.dynamics.com" />
+  <add key="method" value="ClientSecret" />
+  <add key="clientId" value="YOUR_CLIENT_ID" />
+  <add key="clientSecret" value="YOUR_CLIENT_SECRET" />
   
-    <add key="out" value="../typings/XRM" />
-    <add key="solutions" value="" />
-    <add key="entities" value="account, contact" />
-    <add key="web" value="true" />
-  </appSettings>
-</configuration>
+  <add key="out" value="../typings/XRM" />
+  <add key="solutions" value="" />
+  <add key="entities" value="account, contact" />
+  <add key="web" value="true" />
+</appSettings>
 ```
 
 3. Run `XrmTypeScript.exe`

@@ -94,16 +94,20 @@ let runXts () =
 let zip tag =
     let buildOutDir = "src/bin/Release/net462"
     let stageDir    = "temp/zipstage"
+    let libDir      = $"{stageDir}/lib"
     let zipPath     = $"bin/XrmTypeScript-{tag}-bin.zip"
 
     cleanDir stageDir
+    Directory.CreateDirectory libDir |> ignore
 
     for f in [ "files/Run.ps1"; "files/Run.fsx"; "files/XrmTypeScript.exe.config" ] do
         File.Copy(f, $"{stageDir}/{Path.GetFileName f}", overwrite = true)
 
-    copyFiles stageDir (Directory.GetFiles(buildOutDir, "*.dll"))
+    let dlls = Directory.GetFiles(buildOutDir, "*.dll")
+    copyFiles libDir   (dlls |> Array.filter (fun f -> Path.GetFileName f <> "FSharp.Core.dll"))
+    copyFiles stageDir (dlls |> Array.filter (fun f -> Path.GetFileName f = "FSharp.Core.dll"))
     copyFiles stageDir (Directory.GetFiles(buildOutDir, "*.exe"))
-    File.Copy($"{buildOutDir}/XrmTypeScript.xml", $"{stageDir}/XrmTypeScript.xml", overwrite = true)
+    File.Copy($"{buildOutDir}/XrmTypeScript.xml", $"{libDir}/XrmTypeScript.xml", overwrite = true)
 
     zipDirectory stageDir zipPath
     printfn "Created %s" (Path.GetFullPath zipPath)

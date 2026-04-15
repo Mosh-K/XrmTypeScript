@@ -54,6 +54,9 @@
     <Compile Include="CommandLine\CommandLineHelper.fs" />
     <Compile Include="CommandLine\Program.fs" />
     <EmbeddedResource Include="Types\xrm.d.ts" />
+    <EmbeddedResource Include="..\files\XrmTypeScript.exe.config">
+      <LogicalName>XrmTypeScript.exe.config</LogicalName>
+    </EmbeddedResource>
     <None Include="App.config" />
     <None Include="EnvInfo.config" />
   </ItemGroup>
