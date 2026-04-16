@@ -1,5 +1,7 @@
 ﻿module DG.XrmTypeScript.IntermediateRepresentation
 
+open Microsoft.Xrm.Sdk.Metadata
+
 type Option = {
   label: string 
   value: int
@@ -151,6 +153,7 @@ type XrmForm = {
 type InterpretedState = {
   outputDir: string
   entities: XrmEntity[]
+  rawEntities: EntityMetadata[]
   forms: XrmForm[]
   bpfControls: Map<string,ControlField list>
 }

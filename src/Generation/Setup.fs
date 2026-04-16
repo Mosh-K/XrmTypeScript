@@ -81,6 +81,7 @@ let interpretCrmData out formsToIntersect (rawState: RawState) labelMapping =
   printfn "Done!"
 
   { InterpretedState.entities = entityMetadata
+    rawEntities = rawState.metadata
     bpfControls = bpfControls
     forms = forms
     outputDir = out 
