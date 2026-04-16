@@ -317,7 +317,7 @@ let getControlFields (entity: XrmEntity) (form: XElement) : ControlField list =
         let parms = ctrl.Descendants(XName.Get "parameters") 
         if Seq.isEmpty parms then
           let rel = getValue ctrl "relationship"
-          entity.allRelationships
+          entity.manyToOneRelationships @ entity.oneToManyRelationships @ entity.manyToManyRelationships
           |> List.choose (fun r -> if r.schemaName = rel then Some r.relatedSetName else None)
         else
           parms

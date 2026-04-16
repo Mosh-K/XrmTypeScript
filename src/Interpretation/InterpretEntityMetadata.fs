@@ -184,13 +184,6 @@ let interpretEntity (nameMap: Map<string, EntityInfo>) labelMapping (metadata:En
     | x     -> x |> Array.choose (interpretM2MRelationship nameMap logicalName)
 
 
-  let relationships =
-    [ metadata.OneToManyRelationships  |> handleOneToMany false 
-      metadata.ManyToOneRelationships  |> handleOneToMany true 
-      metadata.ManyToManyRelationships |> handleManyToMany metadata.LogicalName 
-    ] |> Array.concat
-      |> List.ofArray
-
   { XrmEntity.typecode = metadata.ObjectTypeCode.GetValueOrDefault()
     schemaName = metadata.SchemaName
     logicalName = metadata.LogicalName
@@ -198,6 +191,8 @@ let interpretEntity (nameMap: Map<string, EntityInfo>) labelMapping (metadata:En
     idAttribute = metadata.PrimaryIdAttribute
     attributes = attributes
     optionSets = optionSets
-    allRelationships = relationships
+    oneToManyRelationships = metadata.OneToManyRelationships |> handleOneToMany false |> List.ofArray
+    manyToOneRelationships  = metadata.ManyToOneRelationships  |> handleOneToMany true  |> List.ofArray
+    manyToManyRelationships = metadata.ManyToManyRelationships |> handleManyToMany metadata.LogicalName |> List.ofArray
     displayName = getLabel metadata.DisplayName
   }

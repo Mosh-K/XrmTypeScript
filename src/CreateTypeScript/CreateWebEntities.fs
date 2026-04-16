@@ -42,12 +42,6 @@ let formattedName (a: XrmAttribute) =
   | SpecialType.EntityReference -> $"\"{valueInfix a.logicalName}{format}\""
   | _ -> $"\"{a.logicalName}{format}\""
 
-let lookupName (a: XrmAttribute) =
-  $"\"{valueInfix a.logicalName}@Microsoft.Dynamics.CRM.lookuplogicalname\""
-
-let bindType (r: XrmRelationship) =
-  TsType.Custom $"`/{r.relatedSetName}(${{string}})`"
-
 (** Various type helper functions *)
 let arrayOf = TsType.Custom >> TsType.Array
 let varsToType =
@@ -125,10 +119,16 @@ let getResultDef (options: OptionSet list) (attr: XrmAttribute) =
 let getBindVariables isCreate isUpdate attrMap (r: XrmRelationship) =
   Map.tryFind r.attributeName attrMap
   ?>> fun attr ->
-    match r.relType = RelType.ManyToOne && isCreate = attr.createable && isUpdate = attr.updateable with
+    match isCreate = attr.createable && isUpdate = attr.updateable with
     | false -> None
     | true  -> Some $"\"{r.navProp}@odata.bind\""
-  ?|> fun name -> Variable.Create(name, bindType r, Comment.Create r.displayName, optional = true)
+    ?|> fun name ->
+      Variable.Create(
+        name,
+        TsType.Custom $"`/{r.relatedSetName}(${{string}})`",
+        Comment.Create r.displayName,
+        optional = true
+      )
 
 let getResultVariable (a: XrmAttribute) = 
   match a.specialType with
@@ -163,7 +163,7 @@ let getLookupNameVariable (a: XrmAttribute) =
 
     Some(
       Variable.Create(
-        lookupName a,
+        $"\"{valueInfix a.logicalName}@Microsoft.Dynamics.CRM.lookuplogicalname\"",
         unionType,
         Comment.Create(a.displayName, colType = a.colType, ?tes = a.targetEntitySets),
         optional = true
@@ -218,17 +218,18 @@ let getEntityInterfaceLines (e: XrmEntity) =
   let entityInterfaces = getBlankEntityInterfaces e
 
   let attrMap = e.attributes |> List.map (fun a -> a.logicalName, a) |> Map.ofList
+  let allRelationships = e.manyToOneRelationships @ e.oneToManyRelationships @ e.manyToManyRelationships
 
   let createAndUpdate =
     [ { entityInterfaces.create with
           vars =
-            e.allRelationships
+            e.manyToOneRelationships
             |> List.choose (getBindVariables true false attrMap)
             |> groupByName
             |> sortByName }
       { entityInterfaces.update with
           vars =
-            e.allRelationships
+            e.manyToOneRelationships
             |> List.choose (getBindVariables false true attrMap)
             |> groupByName
             |> sortByName } ]
@@ -245,20 +246,20 @@ let getEntityInterfaceLines (e: XrmEntity) =
           vars = e.attributes |> List.map (getBaseVariable e.optionSets) |> concatDistinctSort }
       { entityInterfaces.resultRelationships with
           vars =
-            e.allRelationships
+            allRelationships
             |> List.map (getRelationVars false)
             |> groupByName
             |> sortByName }
       { entityInterfaces.createRelationships with
           vars =
-            e.allRelationships
+            allRelationships
             |> List.map (getRelationVars true)
             |> groupByName
             |> sortByName }
       { entityInterfaces.createAndUpdate with
           vars =
             entityId (e, true)
-            :: (e.allRelationships
+            :: (e.manyToOneRelationships
                 |> List.choose (getBindVariables true true attrMap)
                 |> groupByName
                 |> sortByName) }

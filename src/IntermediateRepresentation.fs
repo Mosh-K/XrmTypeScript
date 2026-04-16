@@ -53,7 +53,9 @@ type XrmEntity = {
   idAttribute: string
   attributes: XrmAttribute list 
   optionSets: OptionSet list
-  allRelationships: XrmRelationship list
+  oneToManyRelationships: XrmRelationship list
+  manyToOneRelationships: XrmRelationship list
+  manyToManyRelationships: XrmRelationship list
   displayName: string
 }
 
