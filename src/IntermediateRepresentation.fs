@@ -35,14 +35,14 @@ type XrmAttribute = {
   displayName: string
 }
 
-type RawRelationshipMetadata =
-  | ManyToOne of OneToManyRelationshipMetadata
-  | OneToMany of OneToManyRelationshipMetadata
-  | ManyToMany of ManyToManyRelationshipMetadata
-
-type XrmRelationship = {
+type XrmOneToManyRelationship = {
   relatedInfo: EntityInfo list
-  rawRelationship: RawRelationshipMetadata
+  rawRelationship: OneToManyRelationshipMetadata
+}
+
+type XrmManyToManyRelationship = {
+  relatedInfo: EntityInfo list
+  rawRelationship: ManyToManyRelationshipMetadata
 }
 
 type XrmEntity = {
@@ -51,9 +51,9 @@ type XrmEntity = {
   idAttribute: string
   attributes: XrmAttribute list 
   optionSets: OptionSet list
-  oneToManyRelationships: XrmRelationship list
-  manyToOneRelationships: XrmRelationship list
-  manyToManyRelationships: XrmRelationship list
+  oneToManyRelationships: XrmOneToManyRelationship list
+  manyToOneRelationships: XrmOneToManyRelationship list
+  manyToManyRelationships: XrmManyToManyRelationship list
   displayName: string
 }
 

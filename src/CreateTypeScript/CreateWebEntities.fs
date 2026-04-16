@@ -85,57 +85,40 @@ let getResultDef (options: OptionSet list) (attr: XrmAttribute) =
   | _ -> name, [ attr, comment, vType, None ]
 
 (** Variable functions *)
-let getBindVariables isCreate isUpdate attrMap (r: XrmRelationship) =
-  match r.rawRelationship with
-  | ManyToOne rel ->
-    Map.tryFind rel.ReferencingAttribute attrMap
-    ?>> fun attr ->
-      (match isCreate = attr.createable && isUpdate = attr.updateable with
-       | false -> None
-       | true ->
-         Some $"\"{rel.ReferencingEntityNavigationPropertyName |> sanitizeNavProp}@odata.bind\"")
-      ?|> fun name ->
-        let bindType =
-          r.relatedInfo
-          |> List.map (fun e -> TsType.Custom $"`/{e.EntitySetName}(${{string}})`")
-          |> TsType.Union
+let getBindVariables isCreate isUpdate attrMap (r: XrmOneToManyRelationship) =
+  Map.tryFind r.rawRelationship.ReferencingAttribute attrMap
+  ?>> fun attr ->
+    (match isCreate = attr.createable && isUpdate = attr.updateable with
+     | false -> None
+     | true ->
+       Some $"\"{r.rawRelationship.ReferencingEntityNavigationPropertyName |> sanitizeNavProp}@odata.bind\"")
+    ?|> fun name ->
+      let bindType =
+        r.relatedInfo
+        |> List.map (fun e -> TsType.Custom $"`/{e.EntitySetName}(${{string}})`")
+        |> TsType.Union
 
-        Variable.Create(
-          name,
-          bindType,
-          Comment.Create(r.relatedInfo |> List.map (fun e -> e.DisplayName) |> String.concat " | "),
-          optional = true
-        )
-  | _ -> None
+      Variable.Create(
+        name,
+        bindType,
+        Comment.Create(r.relatedInfo |> List.map (fun e -> e.DisplayName) |> String.concat " | "),
+        optional = true
+      )
 
 let getResultVariable (a: XrmAttribute) = 
   match a.specialType with
   | SpecialType.EntityReference -> getEntityRefDef guidName a |> snd |> List.map defToResVars
   | _ -> []
 
-let getRelationVars (forCreate: bool) logicalName (r: XrmRelationship) =
+let private makeRelationVar forCreate relType navProp relatedInfo =
   let toInterfaceName schemaName =
     if forCreate then
       $"{schemaName}.{CREATE_INTERFACE}"
     else
       schemaName
 
-  let relType =
-    match r.rawRelationship with
-    | ManyToOne _  -> RelType.ManyToOne
-    | OneToMany _  -> RelType.OneToMany
-    | ManyToMany _ -> RelType.ManyToMany
-
-  let navProp =
-    match r.rawRelationship with
-    | ManyToOne  rel -> rel.ReferencingEntityNavigationPropertyName
-    | OneToMany  rel -> rel.ReferencedEntityNavigationPropertyName 
-    | ManyToMany rel ->
-      if logicalName = rel.Entity2LogicalName then rel.Entity1NavigationPropertyName
-      else rel.Entity2NavigationPropertyName
-
   let varType =
-    r.relatedInfo
+    relatedInfo
     |> List.map (fun e -> TsType.Custom(toInterfaceName e.SchemaName))
     |> match relType with
        | RelType.ManyToOne -> id
@@ -146,11 +129,23 @@ let getRelationVars (forCreate: bool) logicalName (r: XrmRelationship) =
     navProp |> sanitizeNavProp,
     varType,
     Comment.Create(
-      r.relatedInfo |> List.map (fun e -> e.DisplayName) |> String.concat " | ",
+      relatedInfo |> List.map (fun e -> e.DisplayName) |> String.concat " | ",
       relType = relType
     ),
     optional = true
   )
+
+let getOneToManyRelationVars (forCreate: bool) isManyToOne (r: XrmOneToManyRelationship) =
+  let relType  = if isManyToOne then RelType.ManyToOne else RelType.OneToMany
+  let navProp  = if isManyToOne then r.rawRelationship.ReferencingEntityNavigationPropertyName
+                                else r.rawRelationship.ReferencedEntityNavigationPropertyName
+  makeRelationVar forCreate relType navProp r.relatedInfo
+
+let getManyToManyRelationVars (forCreate: bool) logicalName (r: XrmManyToManyRelationship) =
+  let navProp =
+    if logicalName = r.rawRelationship.Entity2LogicalName then r.rawRelationship.Entity1NavigationPropertyName
+    else r.rawRelationship.Entity2NavigationPropertyName
+  makeRelationVar forCreate RelType.ManyToMany navProp r.relatedInfo
 
 let getFormattedResultVariable  (options: OptionSet list) (attr: XrmAttribute) = 
   match hasFormattedValue attr with
@@ -225,7 +220,11 @@ let getEntityInterfaceLines (e: XrmEntity) =
   let entityInterfaces = getBlankEntityInterfaces e
 
   let attrMap = e.attributes |> List.map (fun a -> a.logicalName, a) |> Map.ofList
-  let allRelationships = e.manyToOneRelationships @ e.oneToManyRelationships @ e.manyToManyRelationships
+
+  let allRelationVars forCreate =
+    (e.manyToOneRelationships  |> List.map (getOneToManyRelationVars forCreate true))
+    @ (e.oneToManyRelationships |> List.map (getOneToManyRelationVars forCreate false))
+    @ (e.manyToManyRelationships |> List.map (getManyToManyRelationVars forCreate e.logicalName))
 
   let createAndUpdate =
     [ { entityInterfaces.create with
@@ -250,15 +249,9 @@ let getEntityInterfaceLines (e: XrmEntity) =
     [ { entityInterfaces._base with
           vars = e.attributes |> List.map (getBaseVariable e.optionSets) |> concatDistinctSort }
       { entityInterfaces.resultRelationships with
-          vars =
-            allRelationships
-            |> List.map (getRelationVars false e.logicalName)
-            |> sortByName }
+          vars = allRelationVars false |> sortByName }
       { entityInterfaces.createRelationships with
-          vars =
-            allRelationships
-            |> List.map (getRelationVars true e.logicalName)
-            |> sortByName }
+          vars = allRelationVars true |> sortByName }
       { entityInterfaces.createAndUpdate with
           vars =
             entityId (e, true)

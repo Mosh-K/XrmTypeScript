@@ -99,8 +99,8 @@ let interpretRelationship (nameMap: Map<string, EntityInfo>) referencing (rel: O
           { SchemaName = "SystemUser"; EntitySetName = "systemusers"; DisplayName = displayName "systemuser" "User" } ]
       | _        -> [ eInfo ]
 
-    { XrmRelationship.relatedInfo = relatedInfo
-      rawRelationship = if referencing then RawRelationshipMetadata.ManyToOne rel else RawRelationshipMetadata.OneToMany rel }
+    { XrmOneToManyRelationship.relatedInfo = relatedInfo
+      rawRelationship = rel }
 
 let interpretM2MRelationship (nameMap: Map<string, EntityInfo>) logicalName (rel: ManyToManyRelationshipMetadata) =
   let rLogical =
@@ -111,8 +111,8 @@ let interpretM2MRelationship (nameMap: Map<string, EntityInfo>) logicalName (rel
   Map.tryFind rLogical nameMap
   ?|> fun eInfo ->
       
-    { XrmRelationship.relatedInfo = [ eInfo ]
-      rawRelationship = RawRelationshipMetadata.ManyToMany rel }
+    { XrmManyToManyRelationship.relatedInfo = [ eInfo ]
+      rawRelationship = rel }
 
 let interpretEntity (nameMap: Map<string, EntityInfo>) labelMapping (metadata:EntityMetadata) =
   if isNull metadata.Attributes then failwith "No attributes found!"
