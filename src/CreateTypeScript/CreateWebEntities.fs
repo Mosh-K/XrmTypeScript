@@ -125,7 +125,7 @@ let getResultDef (ent: XrmEntity) (attr: XrmAttribute) =
 let getBindVariables isCreate isUpdate attrMap (r: XrmRelationship) =
   Map.tryFind r.attributeName attrMap
   ?>> fun attr ->
-    match r.referencing && isCreate = attr.createable && isUpdate = attr.updateable with
+    match r.relType = RelType.ManyToOne && isCreate = attr.createable && isUpdate = attr.updateable with
     | false -> None
     | true  -> Some $"\"{r.navProp}@odata.bind\""
   ?|> fun name -> Variable.Create(name, bindType r, Comment.Create r.displayName, optional = true)
@@ -140,9 +140,9 @@ let getRelationVars (forCreate: bool) (r: XrmRelationship) =
 
   TsType.Custom interfaceName
   |> 
-    match r.referencing with
-    | true  -> id
-    | false -> TsType.Array
+    match r.relType with
+    | RelType.ManyToOne -> id
+    | _                 -> TsType.Array
   |> fun ty -> Variable.Create(r.navProp, TsType.Union [ ty; TsType.Null ], Comment.Create (r.displayName, relType = r.relType), optional = true)
 
 let getFormattedResultVariable  (ent: XrmEntity) (attr: XrmAttribute) = 

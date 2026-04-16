@@ -88,7 +88,7 @@ let sanitizeNavigationProptertyName string =
     if string = null then "navigationPropertyNameNotDefined"
     else string
 
-let interpretRelationship (nameMap: Map<string, EntityInfo>) referencing (attributes: XrmAttribute list) (rel: OneToManyRelationshipMetadata) =
+let interpretRelationship (nameMap: Map<string, EntityInfo>) referencing (rel: OneToManyRelationshipMetadata) =
   let rLogical =
     if referencing then rel.ReferencedEntity
     else rel.ReferencingEntity
@@ -110,23 +110,22 @@ let interpretRelationship (nameMap: Map<string, EntityInfo>) referencing (attrib
 
     setNames
     |> Array.map (fun (schema,setName) ->
-      let xRel = 
-        { XrmRelationship.schemaName = name
-          attributeName = 
-            if referencing then rel.ReferencingAttribute 
-            else rel.ReferencedAttribute
-          displayName = eInfo.DisplayName
-          relType = if referencing then RelType.ManyToOne else RelType.OneToMany
-          navProp = 
-            if referencing then rel.ReferencingEntityNavigationPropertyName
-            else rel.ReferencedEntityNavigationPropertyName
-            |> sanitizeNavigationProptertyName
-          referencing = referencing
-          relatedSetName = setName
-          relatedSchemaName = schema 
-        }
-
-      eInfo.SchemaName, xRel)
+      { XrmRelationship.schemaName = name
+        attributeName =
+          if referencing then
+            rel.ReferencingAttribute
+          else
+            rel.ReferencedAttribute
+        displayName = eInfo.DisplayName
+        relType = if referencing then RelType.ManyToOne else RelType.OneToMany
+        navProp =
+          (if referencing then
+             rel.ReferencingEntityNavigationPropertyName
+           else
+             rel.ReferencedEntityNavigationPropertyName)
+          |> sanitizeNavigationProptertyName
+        relatedSetName = setName
+        relatedSchemaName = schema })
 
 
 let interpretM2MRelationship (nameMap: Map<string, EntityInfo>) logicalName (rel: ManyToManyRelationshipMetadata) =
@@ -138,21 +137,19 @@ let interpretM2MRelationship (nameMap: Map<string, EntityInfo>) logicalName (rel
   Map.tryFind rLogical nameMap
   ?|> fun eInfo ->
       
-    let xRel = 
-      { XrmRelationship.schemaName = rel.SchemaName 
-        attributeName = rel.SchemaName
-        displayName = eInfo.DisplayName
-        relType = RelType.ManyToMany
-        navProp = 
-          if logicalName = rel.Entity2LogicalName then rel.Entity1NavigationPropertyName
-          else rel.Entity2NavigationPropertyName
-          |> sanitizeNavigationProptertyName
-        referencing = false
-        relatedSetName = eInfo.EntitySetName
-        relatedSchemaName = eInfo.SchemaName
-      }
+    { XrmRelationship.schemaName = rel.SchemaName
+      attributeName = ""
+      displayName = eInfo.DisplayName
+      relType = RelType.ManyToMany
+      navProp =
+        (if logicalName = rel.Entity2LogicalName then
+           rel.Entity1NavigationPropertyName
+         else
+           rel.Entity2NavigationPropertyName)
+        |> sanitizeNavigationProptertyName
+      relatedSetName = eInfo.EntitySetName
+      relatedSchemaName = eInfo.SchemaName }
     
-    eInfo.SchemaName, xRel
 
 
 let interpretEntity (nameMap: Map<string, EntityInfo>) labelMapping (metadata:EntityMetadata) =
@@ -179,7 +176,7 @@ let interpretEntity (nameMap: Map<string, EntityInfo>) labelMapping (metadata:En
     | null  -> Array.empty
     | x     -> 
       x 
-      |> Array.choose (interpretRelationship nameMap referencing attributes)
+      |> Array.choose (interpretRelationship nameMap referencing)
       |> Array.concat
     
   let handleManyToMany logicalName = function
@@ -187,19 +184,12 @@ let interpretEntity (nameMap: Map<string, EntityInfo>) labelMapping (metadata:En
     | x     -> x |> Array.choose (interpretM2MRelationship nameMap logicalName)
 
 
-  let relatedEntities, relationships = 
+  let relationships =
     [ metadata.OneToManyRelationships  |> handleOneToMany false 
       metadata.ManyToOneRelationships  |> handleOneToMany true 
       metadata.ManyToManyRelationships |> handleManyToMany metadata.LogicalName 
     ] |> Array.concat
       |> List.ofArray
-      |> List.unzip
-
-  let relatedEntities = 
-    relatedEntities 
-    |> Set.ofList 
-    |> Set.remove metadata.SchemaName 
-    |> Set.toList
 
   { XrmEntity.typecode = metadata.ObjectTypeCode.GetValueOrDefault()
     schemaName = metadata.SchemaName
@@ -209,7 +199,6 @@ let interpretEntity (nameMap: Map<string, EntityInfo>) labelMapping (metadata:En
     isIntersect = metadata.IsIntersect.GetValueOrDefault(true)
     attributes = attributes
     optionSets = optionSets
-    relatedEntities = relatedEntities
     allRelationships = relationships
     displayName = getLabel metadata.DisplayName
     availableRelationships = List.empty // old

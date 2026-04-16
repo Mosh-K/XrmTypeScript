@@ -89,8 +89,6 @@ type XrmAuthSettings = {
   connectionString: string option
 }
 
-type OptionalNamespace = string option
-
 type XdtGenerationSettings = {
   out: string option
   crmVersion: Version option
@@ -103,23 +101,11 @@ type XdtGenerationSettings = {
   labelMapping: (string * string)[] option
 }
 
-type EntityName = string
-
 type XdtRetrievalSettings = {
-  entities: EntityName[] option
+  entities: string[] option
   solutions: string[] option
   skipInactiveForms: bool
 }
-
-type ViewName = string
-type AttributeName = string
-type OwnedAttributes = AttributeName List
-type Alias = string
-type LinkedEntityName = string * Alias
-type LinkedEntity = LinkedEntityName * AttributeName list
-type LinkedAttributes = LinkedEntity list
-type ParsedFetchXml = (EntityName * OwnedAttributes * LinkedAttributes)
-type ViewData = (Guid * ViewName * ParsedFetchXml)
 
 [<DataContract>]
 type EntityInfo = {
@@ -144,7 +130,7 @@ type RawState = {
   metadata: EntityMetadata[]
   
   [<field : DataMember>]
-  nameMap: Map<EntityName, EntityInfo>
+  nameMap: Map<string, EntityInfo>
 
   [<field : DataMember>]
   bpfData: Entity[]

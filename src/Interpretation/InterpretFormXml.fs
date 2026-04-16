@@ -303,7 +303,7 @@ let getControlFields (entity: XrmEntity) (form: XElement) : ControlField list =
       |> Map.ofSeq
 
     form.Descendants(XName.Get "cell")
-    |> Seq.filter (fun cell -> cell.Descendants(XName.Get "control") |> Seq.isEmpty |> not) // Filter out cells that don't have a control
+    |> Seq.filter (fun c -> c.Descendants(XName.Get "control") |> Seq.isEmpty |> not) // Filter out cells that don't have a control
     |> Seq.map (fun cell -> 
       let ctrl = cell.Descendants(XName.Get "control") |> Seq.head
       

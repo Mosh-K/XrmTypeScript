@@ -85,25 +85,24 @@ let getOptionSetType = function
 /// Translate internal control type to corresponding TypeScript interface.
 let getControlInterface cType (attr: XrmFormAttribute option) canBeNull =
   let returnType = 
-    match attr, cType with
-    | None, ControlType.Default       -> TsType.Custom Controls.Standard
-    | Some (_, _, AttributeType.Default TsType.String, _), ControlType.Default
-                                      -> TsType.Custom Controls.String
-    | Some (_, __, at, _), ControlType.Default    -> TsType.Custom Controls.Base
-    | aType, ControlType.OptionSet -> 
-        match aType with
+    match cType with
+    | ControlType.Default ->
+        match attr with
+        | None                                                   -> TsType.Custom Controls.Standard
+        | Some (_, _, AttributeType.Default TsType.String, _)    -> TsType.Custom Controls.String
+        | _                                                      -> TsType.Custom Controls.Base
+    | ControlType.OptionSet ->
+        match attr with
         | Some (_, _, AttributeType.OptionSet TsType.Boolean, _) ->  TsType.Custom Controls.Boolean
-        | _ -> TsType.SpecificGeneric (Controls.OptionSet, [ getOptionSetType aType ])
-    | aType, ControlType.MultiSelectOptionSet
-                                      -> TsType.SpecificGeneric (Controls.MultiSelectOptionSet, [ getOptionSetType aType ])
-    | Some (_, _, AttributeType.Lookup _, _), ControlType.Lookup tes
-    | _, ControlType.Lookup tes       -> TsType.Generic (Controls.Lookup, tes)
-    | _, ControlType.SubGrid tes      -> TsType.Custom Controls.SubGrid
-    | _, ControlType.Number       -> TsType.Custom Controls.Number
-    | _, ControlType.Date       -> TsType.Custom Controls.Date
-    | _, ControlType.IFrame      -> TsType.Custom Controls.IFrame
-    | _, ControlType.WebResource      -> TsType.Custom Controls.WebResource
-    | _, x                            -> TsType.Custom $"Xrm.Controls.{x}Control"
+        | _                                                      -> TsType.SpecificGeneric (Controls.OptionSet, [ getOptionSetType attr ])
+    | ControlType.MultiSelectOptionSet      -> TsType.SpecificGeneric (Controls.MultiSelectOptionSet, [ getOptionSetType attr ])
+    | ControlType.Lookup tes       -> TsType.Generic (Controls.Lookup, tes)
+    | ControlType.SubGrid tes      -> TsType.Custom Controls.SubGrid
+    | ControlType.Number                    -> TsType.Custom Controls.Number
+    | ControlType.Date                      -> TsType.Custom Controls.Date
+    | ControlType.IFrame                    -> TsType.Custom Controls.IFrame
+    | ControlType.WebResource               -> TsType.Custom Controls.WebResource
+    | x                       -> TsType.Custom $"Xrm.Controls.{x}Control"
   unionWithNull returnType canBeNull
 
 /// Default collection functions which also use the "get" function name.
@@ -150,7 +149,7 @@ let includeControl (name: string) (formType: string option) crmVersion =
 
 let getSectionControlFuncs (controls: XrmFormControl list) (formType: string option) (crmVersion: Version) =
     controls
-    |> List.map (fun (name, comment, attr, cType, isBpf, canBeNull) ->
+    |> List.map (fun (name, comment, attr, cType, _, canBeNull) ->
       let paramType = getConstantType name
       let returnType = getControlInterface cType attr canBeNull         
       match includeControl name formType crmVersion with

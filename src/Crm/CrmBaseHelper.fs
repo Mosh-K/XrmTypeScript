@@ -10,7 +10,6 @@ open Microsoft.Xrm.Sdk.Messages
 open Microsoft.Xrm.Sdk.Query
 open Microsoft.Xrm.Sdk.Metadata
 open Microsoft.Crm.Sdk.Messages
-open Microsoft.Xrm.Sdk.WebServiceClient
 
 // Execute request
 let getResponse<'T when 'T :> OrganizationResponse> (proxy:IOrganizationService) request =

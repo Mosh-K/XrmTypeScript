@@ -41,7 +41,6 @@ type XrmRelationship = {
   relatedSetName: string
   relatedSchemaName: string
   navProp: string
-  referencing: bool
 }
 
 type XrmEntity = {
@@ -55,7 +54,6 @@ type XrmEntity = {
   optionSets: OptionSet list
   availableRelationships: XrmRelationship list
   allRelationships: XrmRelationship list
-  relatedEntities: string list 
   displayName: string
 }
 
