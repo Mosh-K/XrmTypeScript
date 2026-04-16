@@ -97,7 +97,7 @@ let getControlInterface cType (attr: XrmFormAttribute option) canBeNull =
         | _                                                      -> TsType.SpecificGeneric (Controls.OptionSet, [ getOptionSetType attr ])
     | ControlType.MultiSelectOptionSet      -> TsType.SpecificGeneric (Controls.MultiSelectOptionSet, [ getOptionSetType attr ])
     | ControlType.Lookup tes       -> TsType.Generic (Controls.Lookup, tes)
-    | ControlType.SubGrid tes      -> TsType.Custom Controls.SubGrid
+    | ControlType.SubGrid                   -> TsType.Custom Controls.SubGrid
     | ControlType.Number                    -> TsType.Custom Controls.Number
     | ControlType.Date                      -> TsType.Custom Controls.Date
     | ControlType.IFrame                    -> TsType.Custom Controls.IFrame

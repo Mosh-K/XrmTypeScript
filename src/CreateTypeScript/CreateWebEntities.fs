@@ -45,22 +45,6 @@ let formattedName (a: XrmAttribute) =
 (** Various type helper functions *)
 let sortByName = List.sortBy (fun (x: Variable) -> x.name)
 
-let flattenUnion = function
-  | TsType.Union x -> x
-  | t -> [ t ]
-
-let groupByName (vars: Variable list) =
-  vars
-  |> List.groupBy (fun v -> v.name)
-  |> List.map (fun (_, vs) ->
-    if vs.Length = 1 then vs.Head else
-    let types =
-      vs
-      |> List.choose (fun v -> v.varType)
-      |> List.collect flattenUnion
-      |> List.distinct
-    { vs.Head with varType = Some (TsType.Union types) })
-
 let concatDistinctSort = 
   List.concat >> List.distinctBy (fun (x: Variable) -> x.name) >> sortByName
 
@@ -227,13 +211,11 @@ let getEntityInterfaceLines (e: XrmEntity) =
           vars =
             e.manyToOneRelationships
             |> List.choose (getBindVariables true false attrMap)
-            |> groupByName
             |> sortByName }
       { entityInterfaces.update with
           vars =
             e.manyToOneRelationships
             |> List.choose (getBindVariables false true attrMap)
-            |> groupByName
             |> sortByName } ]
 
   let result =
@@ -250,20 +232,17 @@ let getEntityInterfaceLines (e: XrmEntity) =
           vars =
             allRelationships
             |> List.map (getRelationVars false)
-            |> groupByName
             |> sortByName }
       { entityInterfaces.createRelationships with
           vars =
             allRelationships
             |> List.map (getRelationVars true)
-            |> groupByName
             |> sortByName }
       { entityInterfaces.createAndUpdate with
           vars =
             entityId (e, true)
             :: (e.manyToOneRelationships
                 |> List.choose (getBindVariables true true attrMap)
-                |> groupByName
                 |> sortByName) }
       { entityInterfaces.formattedResult with
           vars = e.attributes |> List.map (getFormattedResultVariable e.optionSets) |> concatDistinctSort }

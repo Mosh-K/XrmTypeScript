@@ -43,7 +43,6 @@ let interpretNormalAttribute aType (options:OptionSet option)  =
   | XrmAttributeType.Decimal              -> typeConv aType, SpecialType.Decimal
   | _                                     -> typeConv aType, SpecialType.Default
 
-
 let interpretAttribute (nameMap: Map<string, EntityInfo>) labelMapping (a: AttributeMetadata) =
   let aType = XrmAttributeType.fromDisplayName a.AttributeTypeName
   if a.AttributeOf <> null ||
@@ -103,21 +102,12 @@ let interpretRelationship (nameMap: Map<string, EntityInfo>) referencing (rel: O
           { SchemaName = "SystemUser"; EntitySetName = "systemusers"; DisplayName = displayName "systemuser" "User" } ]
       | _        -> [ eInfo ]
 
-    let name =
-      match rel.ReferencedEntity = rel.ReferencingEntity with
-      | false -> rel.SchemaName
-      | true  ->
-        match referencing with
-        | true  -> sprintf "Referencing%s" rel.SchemaName
-        | false -> sprintf "Referenced%s" rel.SchemaName
-
-    { XrmRelationship.schemaName = name
+    { XrmRelationship.relatedInfo = relatedInfo
       attributeName =
         if referencing then
           rel.ReferencingAttribute
         else
           rel.ReferencedAttribute
-      relatedInfo = relatedInfo
       relType = if referencing then RelType.ManyToOne else RelType.OneToMany
       navProp =
         (if referencing then
@@ -125,7 +115,6 @@ let interpretRelationship (nameMap: Map<string, EntityInfo>) referencing (rel: O
          else
            rel.ReferencedEntityNavigationPropertyName)
         |> sanitizeNavigationProptertyName }
-
 
 let interpretM2MRelationship (nameMap: Map<string, EntityInfo>) logicalName (rel: ManyToManyRelationshipMetadata) =
   let rLogical =
@@ -136,9 +125,8 @@ let interpretM2MRelationship (nameMap: Map<string, EntityInfo>) logicalName (rel
   Map.tryFind rLogical nameMap
   ?|> fun eInfo ->
       
-    { XrmRelationship.schemaName = rel.SchemaName
+    { XrmRelationship.relatedInfo = [ eInfo ]
       attributeName = ""
-      relatedInfo = [ eInfo ]
       relType = RelType.ManyToMany
       navProp =
         (if logicalName = rel.Entity2LogicalName then
@@ -146,8 +134,6 @@ let interpretM2MRelationship (nameMap: Map<string, EntityInfo>) logicalName (rel
          else
            rel.Entity2NavigationPropertyName)
         |> sanitizeNavigationProptertyName }
-    
-
 
 let interpretEntity (nameMap: Map<string, EntityInfo>) labelMapping (metadata:EntityMetadata) =
   if isNull metadata.Attributes then failwith "No attributes found!"

@@ -36,7 +36,6 @@ type XrmAttribute = {
 }
 
 type XrmRelationship = {
-  schemaName: string
   attributeName: string
   relType: RelType
   relatedInfo: EntityInfo list
@@ -63,7 +62,7 @@ type ControlType =
   | Lookup of string
   | OptionSet
   | MultiSelectOptionSet
-  | SubGrid of string
+  | SubGrid
   | WebResource
   | IFrame
   | KBSearch
