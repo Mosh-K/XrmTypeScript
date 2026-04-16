@@ -95,11 +95,12 @@ let interpretRelationship (nameMap: Map<string, EntityInfo>) referencing (rel: O
     
   Map.tryFind rLogical nameMap
   ?|> fun eInfo ->
-    let setNames =
+    let relatedEntities =
       match eInfo.EntitySetName = "owners" with
-      | false -> [|eInfo.SchemaName,eInfo.EntitySetName|]
-      | true -> [|"Team","teams";"SystemUser","systemusers"|]
-    
+      | false -> [| eInfo |]
+      | true  -> [| { SchemaName = "Team";       EntitySetName = "teams";       DisplayName = eInfo.DisplayName }
+                    { SchemaName = "SystemUser"; EntitySetName = "systemusers"; DisplayName = eInfo.DisplayName } |]
+
     let name =
       match rel.ReferencedEntity = rel.ReferencingEntity with
       | false -> rel.SchemaName
@@ -108,24 +109,22 @@ let interpretRelationship (nameMap: Map<string, EntityInfo>) referencing (rel: O
         | true  -> sprintf "Referencing%s" rel.SchemaName
         | false -> sprintf "Referenced%s" rel.SchemaName
 
-    setNames
-    |> Array.map (fun (schema,setName) ->
+    relatedEntities
+    |> Array.map (fun relInfo ->
       { XrmRelationship.schemaName = name
         attributeName =
           if referencing then
             rel.ReferencingAttribute
           else
             rel.ReferencedAttribute
-        displayName = eInfo.DisplayName
+        relatedInfo = relInfo
         relType = if referencing then RelType.ManyToOne else RelType.OneToMany
         navProp =
           (if referencing then
              rel.ReferencingEntityNavigationPropertyName
            else
              rel.ReferencedEntityNavigationPropertyName)
-          |> sanitizeNavigationProptertyName
-        relatedSetName = setName
-        relatedSchemaName = schema })
+          |> sanitizeNavigationProptertyName })
 
 
 let interpretM2MRelationship (nameMap: Map<string, EntityInfo>) logicalName (rel: ManyToManyRelationshipMetadata) =
@@ -139,16 +138,14 @@ let interpretM2MRelationship (nameMap: Map<string, EntityInfo>) logicalName (rel
       
     { XrmRelationship.schemaName = rel.SchemaName
       attributeName = ""
-      displayName = eInfo.DisplayName
+      relatedInfo = eInfo
       relType = RelType.ManyToMany
       navProp =
         (if logicalName = rel.Entity2LogicalName then
            rel.Entity1NavigationPropertyName
          else
            rel.Entity2NavigationPropertyName)
-        |> sanitizeNavigationProptertyName
-      relatedSetName = eInfo.EntitySetName
-      relatedSchemaName = eInfo.SchemaName }
+        |> sanitizeNavigationProptertyName }
     
 
 
@@ -170,29 +167,14 @@ let interpretEntity (nameMap: Map<string, EntityInfo>) labelMapping (metadata:En
     |> Seq.choose id 
     |> Seq.distinctBy (fun x -> x.name) 
     |> Seq.toList
-    
 
-  let handleOneToMany referencing = function
-    | null  -> Array.empty
-    | x     -> 
-      x 
-      |> Array.choose (interpretRelationship nameMap referencing)
-      |> Array.concat
-    
-  let handleManyToMany logicalName = function
-    | null  -> Array.empty
-    | x     -> x |> Array.choose (interpretM2MRelationship nameMap logicalName)
-
-
-  { XrmEntity.typecode = metadata.ObjectTypeCode.GetValueOrDefault()
-    schemaName = metadata.SchemaName
+  { XrmEntity.schemaName = metadata.SchemaName
     logicalName = metadata.LogicalName
-    entitySetName = metadata.EntitySetName |> Utility.stringToOption
     idAttribute = metadata.PrimaryIdAttribute
     attributes = attributes
     optionSets = optionSets
-    oneToManyRelationships = metadata.OneToManyRelationships |> handleOneToMany false |> List.ofArray
-    manyToOneRelationships  = metadata.ManyToOneRelationships  |> handleOneToMany true  |> List.ofArray
-    manyToManyRelationships = metadata.ManyToManyRelationships |> handleManyToMany metadata.LogicalName |> List.ofArray
+    oneToManyRelationships = metadata.OneToManyRelationships |> Array.choose (interpretRelationship nameMap false) |> Array.concat |> List.ofArray
+    manyToOneRelationships  = metadata.ManyToOneRelationships  |> Array.choose (interpretRelationship nameMap true) |> Array.concat |> List.ofArray
+    manyToManyRelationships = metadata.ManyToManyRelationships |> Array.choose (interpretM2MRelationship nameMap metadata.LogicalName) |> List.ofArray
     displayName = getLabel metadata.DisplayName
   }

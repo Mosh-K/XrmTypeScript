@@ -125,8 +125,8 @@ let getBindVariables isCreate isUpdate attrMap (r: XrmRelationship) =
     ?|> fun name ->
       Variable.Create(
         name,
-        TsType.Custom $"`/{r.relatedSetName}(${{string}})`",
-        Comment.Create r.displayName,
+        TsType.Custom $"`/{r.relatedInfo.EntitySetName}(${{string}})`",
+        Comment.Create r.relatedInfo.DisplayName,
         optional = true
       )
 
@@ -136,14 +136,14 @@ let getResultVariable (a: XrmAttribute) =
   | _ -> []
 
 let getRelationVars (forCreate: bool) (r: XrmRelationship) = 
-  let interfaceName = if forCreate then $"{r.relatedSchemaName}.{CREATE_INTERFACE}" else r.relatedSchemaName
+  let interfaceName = if forCreate then $"{r.relatedInfo.SchemaName}.{CREATE_INTERFACE}" else r.relatedInfo.SchemaName
 
   TsType.Custom interfaceName
   |> 
     match r.relType with
     | RelType.ManyToOne -> id
     | _                 -> TsType.Array
-  |> fun ty -> Variable.Create(r.navProp, TsType.Union [ ty; TsType.Null ], Comment.Create (r.displayName, relType = r.relType), optional = true)
+  |> fun ty -> Variable.Create(r.navProp, TsType.Union [ ty; TsType.Null ], Comment.Create (r.relatedInfo.DisplayName, relType = r.relType), optional = true)
 
 let getFormattedResultVariable  (options: OptionSet list) (attr: XrmAttribute) = 
   match hasFormattedValue attr with

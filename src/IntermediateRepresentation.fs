@@ -38,18 +38,14 @@ type XrmAttribute = {
 type XrmRelationship = {
   schemaName: string
   attributeName: string
-  displayName: string
   relType: RelType
-  relatedSetName: string
-  relatedSchemaName: string
+  relatedInfo: EntityInfo
   navProp: string
 }
 
 type XrmEntity = {
-  typecode: int
   schemaName: string
   logicalName: string
-  entitySetName: string option
   idAttribute: string
   attributes: XrmAttribute list 
   optionSets: OptionSet list
