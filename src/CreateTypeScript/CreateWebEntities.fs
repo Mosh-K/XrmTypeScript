@@ -201,7 +201,13 @@ let getBaseVariable (options: OptionSet list) (attr: XrmAttribute) =
 (** Code creation methods *)
 type EntityInterfaces = {
   _base: Interface
+  resultManyToOne: Interface
+  resultOneToMany: Interface
+  resultManyToMany: Interface
   resultRelationships: Interface
+  createManyToOne: Interface
+  createOneToMany: Interface
+  createManyToMany: Interface
   createRelationships: Interface
   formattedResult: Interface
   lookupResult: Interface
@@ -215,15 +221,27 @@ let getBlankEntityInterfaces (e: XrmEntity) =
   let comment = Comment.Create e.displayName
 
   let bn = "Base"
-  let rrn = "Relationships"
+  let rm2o = "ResultManyToOne"
+  let ro2m = "ResultOneToMany"
+  let rm2m = "ResultManyToMany"
+  let rrn = "ResultRelationships"
+  let cm2o = "CreateManyToOne"
+  let co2m = "CreateOneToMany"
+  let cm2m = "CreateManyToMany"
   let crn = "CreateRelationships"
   let frn = "FormattedResult"
   let lrn = "LookupResult"
   let cu = "CreateAndUpdate"
 
   { _base = Interface.Create bn
-    resultRelationships = Interface.Create rrn
-    createRelationships = Interface.Create crn
+    resultManyToOne = Interface.Create rm2o
+    resultOneToMany = Interface.Create ro2m
+    resultManyToMany = Interface.Create rm2m
+    resultRelationships = Interface.Create (rrn, extends = [ rm2o; ro2m; rm2m ])
+    createManyToOne = Interface.Create cm2o
+    createOneToMany = Interface.Create co2m
+    createManyToMany = Interface.Create cm2m
+    createRelationships = Interface.Create (crn, extends = [ cm2o; co2m; cm2m ])
     formattedResult = Interface.Create frn
     lookupResult = Interface.Create lrn
     createAndUpdate = Interface.Create(cu, extends = ([ bn; crn ] |> List.map (withNamespace INTERNAL_NS)))
@@ -242,37 +260,37 @@ let getEntityInterfaceLines (nameMap: Map<string, EntityInfo>) (e: XrmEntity) =
 
   let attrMap = e.attributes |> List.map (fun a -> a.logicalName, a) |> Map.ofList
 
-  let allRelationVars forCreate =
-    (e.manyToOneRelationships  |> List.choose (getManyToOneVar nameMap forCreate))
-    @ (e.oneToManyRelationships |> List.choose (getOneToManyVar nameMap forCreate))
-    @ (e.manyToManyRelationships |> List.choose (getManyToManyVar nameMap forCreate e.logicalName))
+  let create =
+    { entityInterfaces.create with
+        vars =
+          e.manyToOneRelationships
+          |> List.choose (getBindVariables nameMap true false attrMap)
+          |> sortByName }
 
-  let createAndUpdate =
-    [ { entityInterfaces.create with
-          vars =
-            e.manyToOneRelationships
-            |> List.choose (getBindVariables nameMap true false attrMap)
-            |> sortByName }
-      { entityInterfaces.update with
-          vars =
-            e.manyToOneRelationships
-            |> List.choose (getBindVariables nameMap false true attrMap)
-            |> sortByName } ]
+  let update =
+    { entityInterfaces.update with
+        vars =
+          e.manyToOneRelationships
+          |> List.choose (getBindVariables nameMap false true attrMap)
+          |> sortByName }
 
   let result =
-    [ { entityInterfaces.result with
-          vars =
-            entityTag
-            :: entityId (e, false)
-            :: (List.map getResultVariable e.attributes |> concatDistinctSort) } ]
+    { entityInterfaces.result with
+        vars =
+          entityTag
+          :: entityId (e, false)
+          :: (List.map getResultVariable e.attributes |> concatDistinctSort) }
 
   let internalInterfaces =
-    [ { entityInterfaces._base with
-          vars = e.attributes |> List.map (getBaseVariable e.optionSets) |> concatDistinctSort }
-      { entityInterfaces.resultRelationships with
-          vars = allRelationVars false |> sortByName }
-      { entityInterfaces.createRelationships with
-          vars = allRelationVars true |> sortByName }
+    [ { entityInterfaces._base with vars = e.attributes |> List.map (getBaseVariable e.optionSets) |> concatDistinctSort }
+      { entityInterfaces.resultManyToOne with vars = e.manyToOneRelationships |> List.choose (getManyToOneVar nameMap false) |> sortByName }
+      { entityInterfaces.resultOneToMany with vars = e.oneToManyRelationships |> List.choose (getOneToManyVar nameMap false) |> sortByName }
+      { entityInterfaces.resultManyToMany with vars = e.manyToManyRelationships |> List.choose (getManyToManyVar nameMap false e.logicalName) |> sortByName }
+      entityInterfaces.resultRelationships
+      { entityInterfaces.createManyToOne with vars = e.manyToOneRelationships |> List.choose (getManyToOneVar nameMap true) |> sortByName }
+      { entityInterfaces.createOneToMany with vars = e.oneToManyRelationships |> List.choose (getOneToManyVar nameMap true) |> sortByName }
+      { entityInterfaces.createManyToMany with vars = e.manyToManyRelationships |> List.choose (getManyToManyVar nameMap true e.logicalName) |> sortByName }
+      entityInterfaces.createRelationships
       { entityInterfaces.createAndUpdate with
           vars =
             entityId (e, true)
@@ -280,21 +298,20 @@ let getEntityInterfaceLines (nameMap: Map<string, EntityInfo>) (e: XrmEntity) =
                 |> List.choose (getBindVariables nameMap true true attrMap)
                 |> sortByName) }
       { entityInterfaces.formattedResult with
-          vars = e.attributes |> List.map (getFormattedResultVariable e.optionSets) |> concatDistinctSort }
-      { entityInterfaces.lookupResult with
           vars =
             e.attributes
-            |> List.choose getLookupNameVariable
-            |> sortByName } ]
+            |> List.map (getFormattedResultVariable e.optionSets)
+            |> concatDistinctSort }
+      { entityInterfaces.lookupResult with vars = e.attributes |> List.choose getLookupNameVariable |> sortByName } ]
 
   Namespace.Create(
     WEB_NS,
     declare = true,
-    interfaces = result,
+    interfaces = [ result ],
     namespaces =
       [ Namespace.Create(
           e.schemaName,
-          interfaces = createAndUpdate,
+          interfaces = [ create; update ],
           namespaces = [ Namespace.Create(INTERNAL_NS, interfaces = internalInterfaces) ]
         ) ]
   )
