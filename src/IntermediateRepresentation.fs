@@ -40,6 +40,7 @@ type XrmEntity = {
   logicalName: string
   idAttribute: string
   attributes: XrmAttribute list 
+  isIntersect: bool
   optionSets: OptionSet list
   oneToManyRelationships: OneToManyRelationshipMetadata list
   manyToOneRelationships: OneToManyRelationshipMetadata list
@@ -141,7 +142,6 @@ type XrmForm = {
 type InterpretedState = {
   outputDir: string
   entities: XrmEntity[]
-  rawEntities: EntityMetadata[]
   forms: XrmForm[]
   bpfControls: Map<string,ControlField list>
   nameMap: Map<string, EntityInfo>

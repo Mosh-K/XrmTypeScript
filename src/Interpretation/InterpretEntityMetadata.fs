@@ -114,6 +114,7 @@ let interpretEntity (nameMap: Map<string, EntityInfo>) labelMapping (metadata:En
 
   { XrmEntity.schemaName = metadata.SchemaName
     logicalName = metadata.LogicalName
+    isIntersect = metadata.IsIntersect.GetValueOrDefault true
     idAttribute = metadata.PrimaryIdAttribute
     attributes = attributes
     optionSets = optionSets

@@ -81,7 +81,6 @@ let interpretCrmData (gSettings: XdtGenerationSettings) (rawState: RawState) =
   printfn "Done!"
 
   { InterpretedState.entities = entityMetadata
-    rawEntities = rawState.metadata
     bpfControls = bpfControls
     forms = forms
     outputDir = gSettings.out

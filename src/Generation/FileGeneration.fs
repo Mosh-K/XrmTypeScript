@@ -86,7 +86,7 @@ let generateXrmApiDefs state =
       interfaces =
         [ Interface.Create(
             "WebApiOffline",
-            funcs = getRetrieveFuncs state.rawEntities @ getRetrieveMultipleFuncs state.rawEntities
+            funcs = getRetrieveFuncs state.entities @ getRetrieveMultipleFuncs state.entities
           ) ],
       declare = true
     )
