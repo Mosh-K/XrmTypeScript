@@ -67,7 +67,7 @@ let generateWebEntityDefs state =
     state.entities
     |> Array.Parallel.map (fun (e) ->
       let name = e.logicalName
-      let lines = getEntityInterfaceLines e
+      let lines = getEntityInterfaceLines state.nameMap e
 
       sprintf "%s/Web/%s.d.ts" state.outputDir name, 
       lines)

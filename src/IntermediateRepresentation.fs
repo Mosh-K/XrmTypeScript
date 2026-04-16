@@ -35,25 +35,15 @@ type XrmAttribute = {
   displayName: string
 }
 
-type XrmOneToManyRelationship = {
-  relatedInfo: EntityInfo list
-  rawRelationship: OneToManyRelationshipMetadata
-}
-
-type XrmManyToManyRelationship = {
-  relatedInfo: EntityInfo list
-  rawRelationship: ManyToManyRelationshipMetadata
-}
-
 type XrmEntity = {
   schemaName: string
   logicalName: string
   idAttribute: string
   attributes: XrmAttribute list 
   optionSets: OptionSet list
-  oneToManyRelationships: XrmOneToManyRelationship list
-  manyToOneRelationships: XrmOneToManyRelationship list
-  manyToManyRelationships: XrmManyToManyRelationship list
+  oneToManyRelationships: OneToManyRelationshipMetadata list
+  manyToOneRelationships: OneToManyRelationshipMetadata list
+  manyToManyRelationships: ManyToManyRelationshipMetadata list
   displayName: string
 }
 
@@ -154,4 +144,5 @@ type InterpretedState = {
   rawEntities: EntityMetadata[]
   forms: XrmForm[]
   bpfControls: Map<string,ControlField list>
+  nameMap: Map<string, EntityInfo>
 }

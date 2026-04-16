@@ -85,4 +85,5 @@ let interpretCrmData (gSettings: XdtGenerationSettings) (rawState: RawState) =
     bpfControls = bpfControls
     forms = forms
     outputDir = gSettings.out
+    nameMap = rawState.nameMap
   }

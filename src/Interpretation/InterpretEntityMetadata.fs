@@ -84,35 +84,14 @@ let interpretAttribute (nameMap: Map<string, EntityInfo>) labelMapping (a: Attri
   }
 
 
-let interpretRelationship (nameMap: Map<string, EntityInfo>) referencing (rel: OneToManyRelationshipMetadata) =
-  let rLogical =
-    if referencing then rel.ReferencedEntity
-    else rel.ReferencingEntity
-    
-  Map.tryFind rLogical nameMap
-  ?|> fun eInfo ->
-    let relatedInfo =
-      match eInfo.EntitySetName with
-      | "owners" ->
-        let displayName k fallback = nameMap |> Map.tryFind k |> Option.map (fun e -> e.DisplayName) |> Option.defaultValue fallback
-        [ { SchemaName = "Team";       EntitySetName = "teams";       DisplayName = displayName "team"       "Team" }
-          { SchemaName = "SystemUser"; EntitySetName = "systemusers"; DisplayName = displayName "systemuser" "User" } ]
-      | _        -> [ eInfo ]
-
-    { XrmOneToManyRelationship.relatedInfo = relatedInfo
-      rawRelationship = rel }
-
-let interpretM2MRelationship (nameMap: Map<string, EntityInfo>) logicalName (rel: ManyToManyRelationshipMetadata) =
-  let rLogical =
-    match logicalName = rel.Entity2LogicalName with
-    | true  -> rel.Entity1LogicalName
-    | false -> rel.Entity2LogicalName
-    
-  Map.tryFind rLogical nameMap
-  ?|> fun eInfo ->
-      
-    { XrmManyToManyRelationship.relatedInfo = [ eInfo ]
-      rawRelationship = rel }
+let resolveRelatedEntities (nameMap: Map<string, EntityInfo>) (logicalName: string) : EntityInfo list =
+  match Map.tryFind logicalName nameMap with
+  | Some eInfo when eInfo.EntitySetName = "owners" ->
+      let displayName k fallback = nameMap |> Map.tryFind k |> Option.map (fun e -> e.DisplayName) |> Option.defaultValue fallback
+      [ { SchemaName = "Team";       EntitySetName = "teams";       DisplayName = displayName "team"       "Team" }
+        { SchemaName = "SystemUser"; EntitySetName = "systemusers"; DisplayName = displayName "systemuser" "User" } ]
+  | Some eInfo -> [ eInfo ]
+  | None       -> []
 
 let interpretEntity (nameMap: Map<string, EntityInfo>) labelMapping (metadata:EntityMetadata) =
   if isNull metadata.Attributes then failwith "No attributes found!"
@@ -138,8 +117,8 @@ let interpretEntity (nameMap: Map<string, EntityInfo>) labelMapping (metadata:En
     idAttribute = metadata.PrimaryIdAttribute
     attributes = attributes
     optionSets = optionSets
-    oneToManyRelationships = metadata.OneToManyRelationships |> Array.choose (interpretRelationship nameMap false) |> List.ofArray
-    manyToOneRelationships  = metadata.ManyToOneRelationships  |> Array.choose (interpretRelationship nameMap true) |> List.ofArray
-    manyToManyRelationships = metadata.ManyToManyRelationships |> Array.choose (interpretM2MRelationship nameMap metadata.LogicalName) |> List.ofArray
+    oneToManyRelationships = metadata.OneToManyRelationships |> List.ofArray
+    manyToOneRelationships = metadata.ManyToOneRelationships |> List.ofArray
+    manyToManyRelationships = metadata.ManyToManyRelationships |> List.ofArray
     displayName = getLabel metadata.DisplayName
   }
