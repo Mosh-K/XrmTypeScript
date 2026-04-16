@@ -35,11 +35,14 @@ type XrmAttribute = {
   displayName: string
 }
 
+type RawRelationshipMetadata =
+  | ManyToOne of OneToManyRelationshipMetadata
+  | OneToMany of OneToManyRelationshipMetadata
+  | ManyToMany of ManyToManyRelationshipMetadata
+
 type XrmRelationship = {
-  attributeName: string
-  relType: RelType
   relatedInfo: EntityInfo list
-  navProp: string
+  rawRelationship: RawRelationshipMetadata
 }
 
 type XrmEntity = {

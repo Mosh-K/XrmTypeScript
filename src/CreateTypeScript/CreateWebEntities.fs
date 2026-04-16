@@ -1,11 +1,13 @@
 ﻿module internal DG.XrmTypeScript.CreateWebEntities
 
 open Utility
-open TsStringUtil
 open Constants
 open InterpretCommon
 open IntermediateRepresentation
 
+
+let sanitizeNavProp (s: string) =
+  if s = null then "navigationPropertyNameNotDefined" else s
 
 let INTERNAL_NS = "_"
 
@@ -84,49 +86,68 @@ let getResultDef (options: OptionSet list) (attr: XrmAttribute) =
 
 (** Variable functions *)
 let getBindVariables isCreate isUpdate attrMap (r: XrmRelationship) =
-  Map.tryFind r.attributeName attrMap
-  ?>> fun attr ->
-    match isCreate = attr.createable && isUpdate = attr.updateable with
-    | false -> None
-    | true  -> Some $"\"{r.navProp}@odata.bind\""
-    ?|> fun name ->
-      let bindType =
-        r.relatedInfo
-        |> List.map (fun e -> TsType.Custom $"`/{e.EntitySetName}(${{string}})`")
-        |> TsType.Union
-      Variable.Create(
-        name,
-        bindType,
-        Comment.Create (r.relatedInfo |> List.map (fun e -> e.DisplayName) |> String.concat " | "),
-        optional = true
-      )
+  match r.rawRelationship with
+  | ManyToOne rel ->
+    Map.tryFind rel.ReferencingAttribute attrMap
+    ?>> fun attr ->
+      (match isCreate = attr.createable && isUpdate = attr.updateable with
+       | false -> None
+       | true ->
+         Some $"\"{rel.ReferencingEntityNavigationPropertyName |> sanitizeNavProp}@odata.bind\"")
+      ?|> fun name ->
+        let bindType =
+          r.relatedInfo
+          |> List.map (fun e -> TsType.Custom $"`/{e.EntitySetName}(${{string}})`")
+          |> TsType.Union
+
+        Variable.Create(
+          name,
+          bindType,
+          Comment.Create(r.relatedInfo |> List.map (fun e -> e.DisplayName) |> String.concat " | "),
+          optional = true
+        )
+  | _ -> None
 
 let getResultVariable (a: XrmAttribute) = 
   match a.specialType with
   | SpecialType.EntityReference -> getEntityRefDef guidName a |> snd |> List.map defToResVars
   | _ -> []
 
-let getRelationVars (forCreate: bool) (r: XrmRelationship) =
+let getRelationVars (forCreate: bool) logicalName (r: XrmRelationship) =
   let toInterfaceName schemaName =
     if forCreate then
       $"{schemaName}.{CREATE_INTERFACE}"
     else
       schemaName
 
+  let relType =
+    match r.rawRelationship with
+    | ManyToOne _  -> RelType.ManyToOne
+    | OneToMany _  -> RelType.OneToMany
+    | ManyToMany _ -> RelType.ManyToMany
+
+  let navProp =
+    match r.rawRelationship with
+    | ManyToOne  rel -> rel.ReferencingEntityNavigationPropertyName
+    | OneToMany  rel -> rel.ReferencedEntityNavigationPropertyName 
+    | ManyToMany rel ->
+      if logicalName = rel.Entity2LogicalName then rel.Entity1NavigationPropertyName
+      else rel.Entity2NavigationPropertyName
+
   let varType =
     r.relatedInfo
     |> List.map (fun e -> TsType.Custom(toInterfaceName e.SchemaName))
-    |> match r.relType with
+    |> match relType with
        | RelType.ManyToOne -> id
        | _ -> List.map TsType.Array
     |> fun tys -> TsType.Union(tys @ [ TsType.Null ])
 
   Variable.Create(
-    r.navProp,
+    navProp |> sanitizeNavProp,
     varType,
     Comment.Create(
       r.relatedInfo |> List.map (fun e -> e.DisplayName) |> String.concat " | ",
-      relType = r.relType
+      relType = relType
     ),
     optional = true
   )
@@ -231,12 +252,12 @@ let getEntityInterfaceLines (e: XrmEntity) =
       { entityInterfaces.resultRelationships with
           vars =
             allRelationships
-            |> List.map (getRelationVars false)
+            |> List.map (getRelationVars false e.logicalName)
             |> sortByName }
       { entityInterfaces.createRelationships with
           vars =
             allRelationships
-            |> List.map (getRelationVars true)
+            |> List.map (getRelationVars true e.logicalName)
             |> sortByName }
       { entityInterfaces.createAndUpdate with
           vars =
