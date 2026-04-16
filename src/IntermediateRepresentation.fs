@@ -51,10 +51,8 @@ type XrmEntity = {
   logicalName: string
   entitySetName: string option
   idAttribute: string
-  isIntersect: bool
   attributes: XrmAttribute list 
   optionSets: OptionSet list
-  availableRelationships: XrmRelationship list
   allRelationships: XrmRelationship list
   displayName: string
 }

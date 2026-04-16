@@ -28,7 +28,7 @@ let generateFromRaw (gSettings: XdtGenerationSettings) rawState =
 
   // Interpret data and generate resource files
   let data =
-    interpretCrmData gSettings.out gSettings.formIntersects rawState gSettings.labelMapping
+    interpretCrmData gSettings rawState
 
   let defs = 
     seq {

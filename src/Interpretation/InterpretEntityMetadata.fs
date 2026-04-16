@@ -196,10 +196,8 @@ let interpretEntity (nameMap: Map<string, EntityInfo>) labelMapping (metadata:En
     logicalName = metadata.LogicalName
     entitySetName = metadata.EntitySetName |> Utility.stringToOption
     idAttribute = metadata.PrimaryIdAttribute
-    isIntersect = metadata.IsIntersect.GetValueOrDefault(true)
     attributes = attributes
     optionSets = optionSets
     allRelationships = relationships
     displayName = getLabel metadata.DisplayName
-    availableRelationships = List.empty // old
   }

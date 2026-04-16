@@ -109,10 +109,10 @@ let defToFormattedVars (a, comment, _, _) =
 let getEntityRefDef nameFormat (a: XrmAttribute) =
   nameFormat a, [ a, Comment.Create (a.displayName, colType = a.colType, ?tes = a.targetEntitySets), a.varType, Some guidName ]
 
-let getResultDef (ent: XrmEntity) (attr: XrmAttribute) = 
+let getResultDef (options: OptionSet list) (attr: XrmAttribute) = 
   let vType = attr.varType
   let name = attr.logicalName
-  let comment = Comment.Create(attr.displayName, colType = attr.colType, ?tes = attr.targetEntitySets, link = getLink ent attr)
+  let comment = Comment.Create(attr.displayName, colType = attr.colType, ?tes = attr.targetEntitySets, link = getLink options attr)
 
   match attr.specialType with
   | SpecialType.EntityReference -> getEntityRefDef guidName attr
@@ -145,9 +145,9 @@ let getRelationVars (forCreate: bool) (r: XrmRelationship) =
     | _                 -> TsType.Array
   |> fun ty -> Variable.Create(r.navProp, TsType.Union [ ty; TsType.Null ], Comment.Create (r.displayName, relType = r.relType), optional = true)
 
-let getFormattedResultVariable  (ent: XrmEntity) (attr: XrmAttribute) = 
+let getFormattedResultVariable  (options: OptionSet list) (attr: XrmAttribute) = 
   match hasFormattedValue attr with
-  | true  -> getResultDef ent attr |> snd |> List.map defToFormattedVars
+  | true  -> getResultDef options attr |> snd |> List.map defToFormattedVars
   | false -> []
 
 let getLookupNameVariable (a: XrmAttribute) =
@@ -170,10 +170,10 @@ let getLookupNameVariable (a: XrmAttribute) =
       )
     )
 
-let getBaseVariable (ent: XrmEntity) (attr: XrmAttribute) = 
+let getBaseVariable (options: OptionSet list) (attr: XrmAttribute) = 
   match attr.specialType with
   | SpecialType.EntityReference -> []
-  | _ -> getResultDef ent attr |> snd |> List.map defToBaseVars
+  | _ -> getResultDef options attr |> snd |> List.map defToBaseVars
 
 (** Code creation methods *)
 type EntityInterfaces = {
@@ -242,7 +242,7 @@ let getEntityInterfaceLines (e: XrmEntity) =
 
   let internalInterfaces =
     [ { entityInterfaces._base with
-          vars = e.attributes |> List.map (getBaseVariable e) |> concatDistinctSort }
+          vars = e.attributes |> List.map (getBaseVariable e.optionSets) |> concatDistinctSort }
       { entityInterfaces.resultRelationships with
           vars =
             e.allRelationships
@@ -263,7 +263,7 @@ let getEntityInterfaceLines (e: XrmEntity) =
                 |> groupByName
                 |> sortByName) }
       { entityInterfaces.formattedResult with
-          vars = e.attributes |> List.map (getFormattedResultVariable e) |> concatDistinctSort }
+          vars = e.attributes |> List.map (getFormattedResultVariable e.optionSets) |> concatDistinctSort }
       { entityInterfaces.lookupResult with
           vars =
             e.attributes
