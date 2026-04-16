@@ -73,15 +73,15 @@ let getGenerationSettings parsedArgs =
     if String.IsNullOrWhiteSpace ns then String.Empty
     else sanitizeString ns
 
-  { XdtGenerationSettings.out = Map.tryFind "out" parsedArgs 
+  { XdtGenerationSettings.out = Map.tryFind "out" parsedArgs ?| "."
     crmVersion = getArg parsedArgs "crmVersion" parseVersion
     useDeprecated = getArg parsedArgs "useDeprecated" parseBoolish ?| false
     skipForms = getArg parsedArgs "skipForms" parseBoolish ?| false
     oneFile = getArg parsedArgs "oneFile" parseBoolish ?| false
     web = getArg parsedArgs "web" parseBoolish ?| false
     skipXrmApi = getArg parsedArgs "skipXrmApi" parseBoolish ?| false
-    formIntersects = intersects "formintersect" 
-    labelMapping = labelMapping
+    formIntersects = intersects "formintersect" ?| [||]
+    labelMapping = labelMapping ?| [||]
   }
 
 

@@ -90,15 +90,15 @@ type XrmAuthSettings = {
 }
 
 type XdtGenerationSettings = {
-  out: string option
+  out: string
   crmVersion: Version option
   skipForms: bool
   oneFile: bool
   useDeprecated: bool
   web: bool
   skipXrmApi: bool
-  formIntersects: Intersect [] option
-  labelMapping: (string * string)[] option
+  formIntersects: Intersect []
+  labelMapping: (string * string)[]
 }
 
 type XdtRetrievalSettings = {
