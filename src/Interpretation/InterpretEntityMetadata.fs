@@ -95,11 +95,13 @@ let interpretRelationship (nameMap: Map<string, EntityInfo>) referencing (rel: O
     
   Map.tryFind rLogical nameMap
   ?|> fun eInfo ->
-    let relatedEntities =
-      match eInfo.EntitySetName = "owners" with
-      | false -> [| eInfo |]
-      | true  -> [| { SchemaName = "Team";       EntitySetName = "teams";       DisplayName = eInfo.DisplayName }
-                    { SchemaName = "SystemUser"; EntitySetName = "systemusers"; DisplayName = eInfo.DisplayName } |]
+    let relatedInfo =
+      match eInfo.EntitySetName with
+      | "owners" ->
+        let displayName k fallback = nameMap |> Map.tryFind k |> Option.map (fun e -> e.DisplayName) |> Option.defaultValue fallback
+        [ { SchemaName = "Team";       EntitySetName = "teams";       DisplayName = displayName "team"       "Team" }
+          { SchemaName = "SystemUser"; EntitySetName = "systemusers"; DisplayName = displayName "systemuser" "User" } ]
+      | _        -> [ eInfo ]
 
     let name =
       match rel.ReferencedEntity = rel.ReferencingEntity with
@@ -109,22 +111,20 @@ let interpretRelationship (nameMap: Map<string, EntityInfo>) referencing (rel: O
         | true  -> sprintf "Referencing%s" rel.SchemaName
         | false -> sprintf "Referenced%s" rel.SchemaName
 
-    relatedEntities
-    |> Array.map (fun relInfo ->
-      { XrmRelationship.schemaName = name
-        attributeName =
-          if referencing then
-            rel.ReferencingAttribute
-          else
-            rel.ReferencedAttribute
-        relatedInfo = relInfo
-        relType = if referencing then RelType.ManyToOne else RelType.OneToMany
-        navProp =
-          (if referencing then
-             rel.ReferencingEntityNavigationPropertyName
-           else
-             rel.ReferencedEntityNavigationPropertyName)
-          |> sanitizeNavigationProptertyName })
+    { XrmRelationship.schemaName = name
+      attributeName =
+        if referencing then
+          rel.ReferencingAttribute
+        else
+          rel.ReferencedAttribute
+      relatedInfo = relatedInfo
+      relType = if referencing then RelType.ManyToOne else RelType.OneToMany
+      navProp =
+        (if referencing then
+           rel.ReferencingEntityNavigationPropertyName
+         else
+           rel.ReferencedEntityNavigationPropertyName)
+        |> sanitizeNavigationProptertyName }
 
 
 let interpretM2MRelationship (nameMap: Map<string, EntityInfo>) logicalName (rel: ManyToManyRelationshipMetadata) =
@@ -138,7 +138,7 @@ let interpretM2MRelationship (nameMap: Map<string, EntityInfo>) logicalName (rel
       
     { XrmRelationship.schemaName = rel.SchemaName
       attributeName = ""
-      relatedInfo = eInfo
+      relatedInfo = [ eInfo ]
       relType = RelType.ManyToMany
       navProp =
         (if logicalName = rel.Entity2LogicalName then
@@ -173,8 +173,8 @@ let interpretEntity (nameMap: Map<string, EntityInfo>) labelMapping (metadata:En
     idAttribute = metadata.PrimaryIdAttribute
     attributes = attributes
     optionSets = optionSets
-    oneToManyRelationships = metadata.OneToManyRelationships |> Array.choose (interpretRelationship nameMap false) |> Array.concat |> List.ofArray
-    manyToOneRelationships  = metadata.ManyToOneRelationships  |> Array.choose (interpretRelationship nameMap true) |> Array.concat |> List.ofArray
+    oneToManyRelationships = metadata.OneToManyRelationships |> Array.choose (interpretRelationship nameMap false) |> List.ofArray
+    manyToOneRelationships  = metadata.ManyToOneRelationships  |> Array.choose (interpretRelationship nameMap true) |> List.ofArray
     manyToManyRelationships = metadata.ManyToManyRelationships |> Array.choose (interpretM2MRelationship nameMap metadata.LogicalName) |> List.ofArray
     displayName = getLabel metadata.DisplayName
   }

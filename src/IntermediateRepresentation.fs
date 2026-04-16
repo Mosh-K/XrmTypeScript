@@ -39,7 +39,7 @@ type XrmRelationship = {
   schemaName: string
   attributeName: string
   relType: RelType
-  relatedInfo: EntityInfo
+  relatedInfo: EntityInfo list
   navProp: string
 }
 

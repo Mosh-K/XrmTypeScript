@@ -43,24 +43,7 @@ let formattedName (a: XrmAttribute) =
   | _ -> $"\"{a.logicalName}{format}\""
 
 (** Various type helper functions *)
-let arrayOf = TsType.Custom >> TsType.Array
-let varsToType =
-  varsToInlineInterfaceString >> TsType.Custom
-
 let sortByName = List.sortBy (fun (x: Variable) -> x.name)
-let assignUniqueNames =
-  List.groupBy (fun (var: Variable) -> var.name)
-  >> List.map (fun (_, var) -> 
-         var
-//         |> Array.sortBy (fun var -> var.guid)
-         |> List.mapi (fun i var -> 
-                    if i = 0 then var
-                    else
-                        match var.name.StartsWith "\"" with
-                        | true  -> { var with name = $"{var.name.TrimEnd '"'}{i}\"" }
-                        | false -> { var with name = $"{var.name}{i}" }))
-  >> List.concat
-//  >> sortByName
 
 let flattenUnion = function
   | TsType.Union x -> x
@@ -123,10 +106,14 @@ let getBindVariables isCreate isUpdate attrMap (r: XrmRelationship) =
     | false -> None
     | true  -> Some $"\"{r.navProp}@odata.bind\""
     ?|> fun name ->
+      let bindType =
+        r.relatedInfo
+        |> List.map (fun e -> TsType.Custom $"`/{e.EntitySetName}(${{string}})`")
+        |> TsType.Union
       Variable.Create(
         name,
-        TsType.Custom $"`/{r.relatedInfo.EntitySetName}(${{string}})`",
-        Comment.Create r.relatedInfo.DisplayName,
+        bindType,
+        Comment.Create (r.relatedInfo |> List.map (fun e -> e.DisplayName) |> String.concat " | "),
         optional = true
       )
 
@@ -135,15 +122,30 @@ let getResultVariable (a: XrmAttribute) =
   | SpecialType.EntityReference -> getEntityRefDef guidName a |> snd |> List.map defToResVars
   | _ -> []
 
-let getRelationVars (forCreate: bool) (r: XrmRelationship) = 
-  let interfaceName = if forCreate then $"{r.relatedInfo.SchemaName}.{CREATE_INTERFACE}" else r.relatedInfo.SchemaName
+let getRelationVars (forCreate: bool) (r: XrmRelationship) =
+  let toInterfaceName schemaName =
+    if forCreate then
+      $"{schemaName}.{CREATE_INTERFACE}"
+    else
+      schemaName
 
-  TsType.Custom interfaceName
-  |> 
-    match r.relType with
-    | RelType.ManyToOne -> id
-    | _                 -> TsType.Array
-  |> fun ty -> Variable.Create(r.navProp, TsType.Union [ ty; TsType.Null ], Comment.Create (r.relatedInfo.DisplayName, relType = r.relType), optional = true)
+  let varType =
+    r.relatedInfo
+    |> List.map (fun e -> TsType.Custom(toInterfaceName e.SchemaName))
+    |> match r.relType with
+       | RelType.ManyToOne -> id
+       | _ -> List.map TsType.Array
+    |> fun tys -> TsType.Union(tys @ [ TsType.Null ])
+
+  Variable.Create(
+    r.navProp,
+    varType,
+    Comment.Create(
+      r.relatedInfo |> List.map (fun e -> e.DisplayName) |> String.concat " | ",
+      relType = r.relType
+    ),
+    optional = true
+  )
 
 let getFormattedResultVariable  (options: OptionSet list) (attr: XrmAttribute) = 
   match hasFormattedValue attr with
