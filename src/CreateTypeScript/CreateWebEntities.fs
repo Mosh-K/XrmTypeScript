@@ -16,19 +16,6 @@ let INTERNAL_NS = "_"
 (** Interface name helper functions *)
 let withNamespace (ns: string) (str: string) = $"{ns}.{str}"
 
-let currencyId = {
-  XrmAttribute.logicalName = "transactioncurrencyid"
-  schemaName = "TransactionCurrencyId"
-  specialType = SpecialType.EntityReference
-  varType = TsType.String
-  colType = XrmAttributeType.Lookup
-  targetEntitySets = Some [| "transactioncurrency", "transactioncurrencies", "Currency" |]
-  readable = true
-  createable = true
-  updateable = true
-  displayName = "Currency"
-}
-
 let entityTag = 
   Variable.Create("\"@odata.etag\"", TsType.String)
 
@@ -71,20 +58,16 @@ let defToResVars (a, comment, ty, nameTransform) =
 let defToFormattedVars (a, comment, _, _) =
   Variable.Create(formattedName a, TsType.String, comment, optional = true  ) 
 
-let getEntityRefDef nameFormat (a: XrmAttribute) =
-  nameFormat a, [ a, Comment.Create (a.displayName, colType = a.colType, ?tes = a.targetEntitySets), a.varType, Some guidName ]
+let getEntityRefDef (a: XrmAttribute) =
+  a, Comment.Create (a.displayName, colType = a.colType, ?tes = a.targetEntitySets), a.varType, Some guidName
 
 let getResultDef (options: OptionSet list) (attr: XrmAttribute) = 
-  let vType = attr.varType
-  let name = attr.logicalName
   let comment = Comment.Create(attr.displayName, colType = attr.colType, ?tes = attr.targetEntitySets, link = getLink options attr)
-
   match attr.specialType with
-  | SpecialType.EntityReference -> getEntityRefDef guidName attr
-  | SpecialType.Money -> name, [ attr, comment, vType, None; currencyId, comment, TsType.String, Some guidName ]
-  | SpecialType.Decimal -> name, [ attr, comment, TsType.Number, None ]
-  | SpecialType.MultiSelectOptionSet -> name, [ attr, comment, TsType.String, None ]
-  | _ -> name, [ attr, comment, vType, None ]
+  | SpecialType.EntityReference -> getEntityRefDef attr
+  | SpecialType.Decimal -> attr, comment, TsType.Number, None
+  | SpecialType.MultiSelectOptionSet -> attr, comment, TsType.String, None
+  | _ -> attr, comment, attr.varType, None
 
 (** Variable functions *)
 let getBindVariables (nameMap: Map<string, EntityInfo>) isUpdate attrMap (rel: OneToManyRelationshipMetadata) =
@@ -112,7 +95,7 @@ let getBindVariables (nameMap: Map<string, EntityInfo>) isUpdate attrMap (rel: O
 
 let getResultVariable (a: XrmAttribute) = 
   match a.specialType with
-  | SpecialType.EntityReference -> getEntityRefDef guidName a |> snd |> List.map defToResVars
+  | SpecialType.EntityReference -> [ getEntityRefDef a |> defToResVars ]
   | _ -> []
 
 let private toInterfaceName forCreate schemaName =
@@ -170,7 +153,7 @@ let getManyToManyVar (nameMap: Map<string, EntityInfo>) (forCreate: bool) logica
 
 let getFormattedResultVariable  (options: OptionSet list) (attr: XrmAttribute) = 
   match hasFormattedValue attr with
-  | true  -> getResultDef options attr |> snd |> List.map defToFormattedVars
+  | true  -> [ getResultDef options attr |> defToFormattedVars ]
   | false -> []
 
 let getLookupNameVariable (a: XrmAttribute) =
@@ -196,7 +179,7 @@ let getLookupNameVariable (a: XrmAttribute) =
 let getBaseVariable (options: OptionSet list) (attr: XrmAttribute) = 
   match attr.specialType with
   | SpecialType.EntityReference -> []
-  | _ -> getResultDef options attr |> snd |> List.map defToBaseVars
+  | _ -> [ getResultDef options attr |> defToBaseVars ]
 
 (** Code creation methods *)
 type EntityInterfaces = {
