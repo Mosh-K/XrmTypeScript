@@ -77,9 +77,9 @@ let interpretAttribute (nameMap: Map<string, EntityInfo>) labelMapping (a: Attri
     specialType = sType
     colType = aType
     targetEntitySets = targetEntitySets
-    readable = a.IsValidForRead.GetValueOrDefault(false)
-    createable = a.IsValidForCreate.GetValueOrDefault(false)
-    updateable = a.IsValidForUpdate.GetValueOrDefault(false)
+    readable = a.IsValidForRead.GetValueOrDefault true
+    createable = a.IsValidForCreate.GetValueOrDefault true
+    updateable = a.IsValidForUpdate.GetValueOrDefault true
     displayName = getLabel a.DisplayName
   }
 
@@ -114,7 +114,6 @@ let interpretEntity (nameMap: Map<string, EntityInfo>) labelMapping (metadata:En
 
   { XrmEntity.schemaName = metadata.SchemaName
     logicalName = metadata.LogicalName
-    isIntersect = metadata.IsIntersect.GetValueOrDefault true
     idAttribute = metadata.PrimaryIdAttribute
     attributes = attributes
     optionSets = optionSets

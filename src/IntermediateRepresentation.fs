@@ -40,7 +40,6 @@ type XrmEntity = {
   logicalName: string
   idAttribute: string
   attributes: XrmAttribute list 
-  isIntersect: bool
   optionSets: OptionSet list
   oneToManyRelationships: OneToManyRelationshipMetadata list
   manyToOneRelationships: OneToManyRelationshipMetadata list

@@ -11,7 +11,6 @@ open Constants
 let getRetrieveFuncs (rawEntities: XrmEntity array) =
   rawEntities
   |> Array.toList
-  |> List.filter (fun e -> not e.isIntersect)
   |> List.sortBy (fun e -> e.logicalName)
   |> List.map (fun e ->
     Function.Create(
@@ -26,7 +25,6 @@ let getRetrieveFuncs (rawEntities: XrmEntity array) =
 let getRetrieveMultipleFuncs (rawEntities: XrmEntity array) =
   rawEntities
   |> Array.toList
-  |> List.filter (fun e -> not e.isIntersect)
   |> List.sortBy (fun e -> e.logicalName)
   |> List.map (fun e ->
     Function.Create(

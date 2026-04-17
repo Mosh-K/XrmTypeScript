@@ -87,10 +87,10 @@ let getResultDef (options: OptionSet list) (attr: XrmAttribute) =
   | _ -> name, [ attr, comment, vType, None ]
 
 (** Variable functions *)
-let getBindVariables (nameMap: Map<string, EntityInfo>) isCreate isUpdate attrMap (rel: OneToManyRelationshipMetadata) =
+let getBindVariables (nameMap: Map<string, EntityInfo>) isUpdate attrMap (rel: OneToManyRelationshipMetadata) =
   Map.tryFind rel.ReferencingAttribute attrMap
   ?>> fun attr ->
-    (match isCreate = attr.createable && isUpdate = attr.updateable with
+    (match attr.createable && isUpdate = attr.updateable with
      | false -> None
      | true ->
        Some $"\"{rel.ReferencingEntityNavigationPropertyName |> sanitizeNavProp}@odata.bind\"")
@@ -201,17 +201,14 @@ let getBaseVariable (options: OptionSet list) (attr: XrmAttribute) =
 (** Code creation methods *)
 type EntityInterfaces = {
   _base: Interface
-  resultManyToOne: Interface
   resultOneToMany: Interface
   resultManyToMany: Interface
   resultRelationships: Interface
-  createManyToOne: Interface
   createOneToMany: Interface
   createManyToMany: Interface
   createRelationships: Interface
   formattedResult: Interface
   lookupResult: Interface
-  createAndUpdate: Interface
   create: Interface
   update: Interface
   result: Interface
@@ -221,32 +218,26 @@ let getBlankEntityInterfaces (e: XrmEntity) =
   let comment = Comment.Create e.displayName
 
   let bn = "Base"
-  let rm2o = "ResultManyToOne"
   let ro2m = "ResultOneToMany"
   let rm2m = "ResultManyToMany"
   let rrn = "ResultRelationships"
-  let cm2o = "CreateManyToOne"
   let co2m = "CreateOneToMany"
   let cm2m = "CreateManyToMany"
   let crn = "CreateRelationships"
   let frn = "FormattedResult"
   let lrn = "LookupResult"
-  let cu = "CreateAndUpdate"
 
   { _base = Interface.Create bn
-    resultManyToOne = Interface.Create rm2o
     resultOneToMany = Interface.Create ro2m
     resultManyToMany = Interface.Create rm2m
-    resultRelationships = Interface.Create (rrn, extends = [ rm2o; ro2m; rm2m ])
-    createManyToOne = Interface.Create cm2o
+    resultRelationships = Interface.Create (rrn, extends = [ ro2m; rm2m ])
     createOneToMany = Interface.Create co2m
     createManyToMany = Interface.Create cm2m
-    createRelationships = Interface.Create (crn, extends = [ cm2o; co2m; cm2m ])
+    createRelationships = Interface.Create (crn, extends = [ co2m; cm2m ])
     formattedResult = Interface.Create frn
     lookupResult = Interface.Create lrn
-    createAndUpdate = Interface.Create(cu, extends = ([ bn; crn ] |> List.map (withNamespace INTERNAL_NS)))
-    create = Interface.Create(CREATE_INTERFACE, comment, [ $"{INTERNAL_NS}.{cu}" ])
-    update = Interface.Create(UPDATE_INTERFACE, comment, [ $"{INTERNAL_NS}.{cu}" ])
+    update = Interface.Create(UPDATE_INTERFACE, comment, [ bn; crn ] |> List.map (withNamespace INTERNAL_NS))
+    create = Interface.Create(CREATE_INTERFACE, comment, [ UPDATE_INTERFACE ])
     result =
       Interface.Create(
         e.schemaName,
@@ -260,18 +251,19 @@ let getEntityInterfaceLines (nameMap: Map<string, EntityInfo>) (e: XrmEntity) =
 
   let attrMap = e.attributes |> List.map (fun a -> a.logicalName, a) |> Map.ofList
 
+  let update =
+    { entityInterfaces.update with
+        vars =
+          entityId (e, true)
+          :: (e.manyToOneRelationships
+              |> List.choose (getBindVariables nameMap true attrMap)
+              |> sortByName) }
+
   let create =
     { entityInterfaces.create with
         vars =
           e.manyToOneRelationships
-          |> List.choose (getBindVariables nameMap true false attrMap)
-          |> sortByName }
-
-  let update =
-    { entityInterfaces.update with
-        vars =
-          e.manyToOneRelationships
-          |> List.choose (getBindVariables nameMap false true attrMap)
+          |> List.choose (getBindVariables nameMap false attrMap)
           |> sortByName }
 
   let result =
@@ -283,20 +275,12 @@ let getEntityInterfaceLines (nameMap: Map<string, EntityInfo>) (e: XrmEntity) =
 
   let internalInterfaces =
     [ { entityInterfaces._base with vars = e.attributes |> List.map (getBaseVariable e.optionSets) |> concatDistinctSort }
-      { entityInterfaces.resultManyToOne with vars = e.manyToOneRelationships |> List.choose (getManyToOneVar nameMap false) |> sortByName }
       { entityInterfaces.resultOneToMany with vars = e.oneToManyRelationships |> List.choose (getOneToManyVar nameMap false) |> sortByName }
       { entityInterfaces.resultManyToMany with vars = e.manyToManyRelationships |> List.choose (getManyToManyVar nameMap false e.logicalName) |> sortByName }
-      entityInterfaces.resultRelationships
-      { entityInterfaces.createManyToOne with vars = e.manyToOneRelationships |> List.choose (getManyToOneVar nameMap true) |> sortByName }
+      { entityInterfaces.resultRelationships with vars = e.manyToOneRelationships |> List.choose (getManyToOneVar nameMap false) |> sortByName}
       { entityInterfaces.createOneToMany with vars = e.oneToManyRelationships |> List.choose (getOneToManyVar nameMap true) |> sortByName }
       { entityInterfaces.createManyToMany with vars = e.manyToManyRelationships |> List.choose (getManyToManyVar nameMap true e.logicalName) |> sortByName }
-      entityInterfaces.createRelationships
-      { entityInterfaces.createAndUpdate with
-          vars =
-            entityId (e, true)
-            :: (e.manyToOneRelationships
-                |> List.choose (getBindVariables nameMap true true attrMap)
-                |> sortByName) }
+      { entityInterfaces.createRelationships with vars = e.manyToOneRelationships |> List.choose (getManyToOneVar nameMap true) |> sortByName}
       { entityInterfaces.formattedResult with
           vars =
             e.attributes
