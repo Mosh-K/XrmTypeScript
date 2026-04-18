@@ -72,7 +72,7 @@ let getAttribute (enums:Map<string,TsType>) (entity: XrmEntity) (cField: Control
   let comment = 
     match attribute with
     | None -> Comment.Create cField.displayName
-    | Some attr -> Comment.Create(attr.displayName, colType = attr.colType, ?tes = attr.targetEntitySets, link = getLink entity.optionSets attr)
+    | Some attr -> Comment.Create(attr.displayName, colType = attr.colType, ?tes = attr.targetEntitySets, link = getEnumLink entity.optionSets attr)
 
   let attrType = getAttributeType attribute
 
@@ -136,7 +136,7 @@ let getControl  (enums:Map<string,TsType>) (entity: XrmEntity) (cField:ControlFi
     | None -> Comment.Create cField.displayName
     | Some attr ->
       let label = if cField.displayName.Trim() <> attr.displayName.Trim() then cField.displayName else ""
-      Comment.Create(attr.displayName, label = label, colType = attr.colType, ?tes = attr.targetEntitySets, link = getLink entity.optionSets attr)
+      Comment.Create(attr.displayName, label = label, colType = attr.colType, ?tes = attr.targetEntitySets, link = getEnumLink entity.optionSets attr)
     
   let cType = 
     match cField.controlClass with

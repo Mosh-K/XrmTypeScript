@@ -20,7 +20,6 @@ type SpecialType =
   | Money 
   | Guid 
   | EntityReference
-  | Decimal
 
 type XrmAttribute = { 
   schemaName: string

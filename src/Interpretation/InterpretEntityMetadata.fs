@@ -18,6 +18,7 @@ let typeConv = function
   | XrmAttributeType.Integer
   | XrmAttributeType.Double
   | XrmAttributeType.BigInt
+  | XrmAttributeType.Decimal
   | XrmAttributeType.Money
   | XrmAttributeType.Picklist
   | XrmAttributeType.State
@@ -26,7 +27,7 @@ let typeConv = function
 
 let interpretNormalAttribute aType (options:OptionSet option)  =
   match aType with
-  | XrmAttributeType.Money -> TsType.Number, SpecialType.Money
+  | XrmAttributeType.Money                -> TsType.Number, SpecialType.Money
     
   | XrmAttributeType.MultiSelectPicklist  -> TsType.EnumRef options.Value.name, SpecialType.MultiSelectOptionSet
   | XrmAttributeType.Picklist
@@ -40,7 +41,6 @@ let interpretNormalAttribute aType (options:OptionSet option)  =
         
   | XrmAttributeType.Uniqueidentifier     -> TsType.String, SpecialType.Guid
 
-  | XrmAttributeType.Decimal              -> typeConv aType, SpecialType.Decimal
   | _                                     -> typeConv aType, SpecialType.Default
 
 let interpretAttribute (nameMap: Map<string, EntityInfo>) labelMapping (a: AttributeMetadata) =

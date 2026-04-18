@@ -4,7 +4,7 @@ open Constants
 open IntermediateRepresentation
 
 
-let getLink (options: OptionSet list) (a: XrmAttribute) =
+let getEnumLink (options: OptionSet list) (a: XrmAttribute) =
   match a.colType with
   | XrmAttributeType.Picklist
   | XrmAttributeType.MultiSelectPicklist

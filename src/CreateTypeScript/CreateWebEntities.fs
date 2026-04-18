@@ -22,9 +22,7 @@ let entityTag =
 let entityId (e: XrmEntity, optional ) =
   Variable.Create(e.idAttribute, TsType.String, optional = optional)
 
-let logicalName (a: XrmAttribute) = a.logicalName
 let valueInfix (s: string) = $"_{s}_value"
-let guidName (a: XrmAttribute) = valueInfix a.logicalName
 
 let formattedName (a: XrmAttribute) =
   let format = "@OData.Community.Display.V1.FormattedValue"
@@ -48,26 +46,17 @@ let hasFormattedValue a =
   | _, TsType.Date -> true
   | _ -> false
 
-(** Definition functions *)
-let defToBaseVars (a, comment, ty, nameTransform) =
-  Variable.Create(nameTransform ?| logicalName <| a, TsType.Union [ ty; TsType.Null ], comment, optional = true) 
+let getAttributeComment (attr: XrmAttribute) (options: OptionSet list option) =
+  let link =
+    match options with
+    | Some opts -> getEnumLink opts attr
+    | None -> ""
+  Comment.Create(attr.displayName, colType = attr.colType, ?tes = attr.targetEntitySets, link = link)
 
-let defToResVars (a, comment, ty, nameTransform) =
-  Variable.Create(nameTransform ?| logicalName <| a, ty, comment, optional = true) 
-
-let defToFormattedVars (a, comment, _, _) =
-  Variable.Create(formattedName a, TsType.String, comment, optional = true  ) 
-
-let getEntityRefDef (a: XrmAttribute) =
-  a, Comment.Create (a.displayName, colType = a.colType, ?tes = a.targetEntitySets), a.varType, Some guidName
-
-let getResultDef (options: OptionSet list) (attr: XrmAttribute) = 
-  let comment = Comment.Create(attr.displayName, colType = attr.colType, ?tes = attr.targetEntitySets, link = getLink options attr)
+let getScalarType (attr: XrmAttribute) =
   match attr.specialType with
-  | SpecialType.EntityReference -> getEntityRefDef attr
-  | SpecialType.Decimal -> attr, comment, TsType.Number, None
-  | SpecialType.MultiSelectOptionSet -> attr, comment, TsType.String, None
-  | _ -> attr, comment, attr.varType, None
+  | SpecialType.MultiSelectOptionSet -> TsType.String
+  | _ -> attr.varType
 
 (** Variable functions *)
 let getBindVariables (nameMap: Map<string, EntityInfo>) isUpdate attrMap (rel: OneToManyRelationshipMetadata) =
@@ -93,9 +82,15 @@ let getBindVariables (nameMap: Map<string, EntityInfo>) isUpdate attrMap (rel: O
           optional = true
         ))
 
-let getResultVariable (a: XrmAttribute) = 
+let getLookupValueVariable (a: XrmAttribute) =
   match a.specialType with
-  | SpecialType.EntityReference -> [ getEntityRefDef a |> defToResVars ]
+  | SpecialType.EntityReference ->
+    [ Variable.Create(
+        valueInfix a.logicalName,
+        TsType.String,
+        getAttributeComment a None,
+        optional = true
+      ) ]
   | _ -> []
 
 let private toInterfaceName forCreate schemaName =
@@ -151,9 +146,15 @@ let getManyToManyVar (nameMap: Map<string, EntityInfo>) (forCreate: bool) logica
       optional = true
     ))
 
-let getFormattedResultVariable  (options: OptionSet list) (attr: XrmAttribute) = 
+let getFormattedResultVariable (options: OptionSet list) (attr: XrmAttribute) =
   match hasFormattedValue attr with
-  | true  -> [ getResultDef options attr |> defToFormattedVars ]
+  | true ->
+    [ Variable.Create(
+        formattedName attr,
+        TsType.String,
+        getAttributeComment attr (Some options),
+        optional = true
+      ) ]
   | false -> []
 
 let getLookupNameVariable (a: XrmAttribute) =
@@ -171,15 +172,21 @@ let getLookupNameVariable (a: XrmAttribute) =
       Variable.Create(
         $"\"{valueInfix a.logicalName}@Microsoft.Dynamics.CRM.lookuplogicalname\"",
         unionType,
-        Comment.Create(a.displayName, colType = a.colType, ?tes = a.targetEntitySets),
+        getAttributeComment a None,
         optional = true
       )
     )
 
-let getBaseVariable (options: OptionSet list) (attr: XrmAttribute) = 
+let getScalarVariable (options: OptionSet list) (attr: XrmAttribute) =
   match attr.specialType with
   | SpecialType.EntityReference -> []
-  | _ -> [ getResultDef options attr |> defToBaseVars ]
+  | _ ->
+    [ Variable.Create(
+        attr.logicalName,
+        TsType.Union [ getScalarType attr; TsType.Null ],
+        getAttributeComment attr (Some options),
+        optional = true
+      ) ]
 
 (** Code creation methods *)
 type EntityInterfaces = {
@@ -254,10 +261,10 @@ let getEntityInterfaceLines (nameMap: Map<string, EntityInfo>) (e: XrmEntity) =
         vars =
           entityTag
           :: entityId (e, false)
-          :: (List.map getResultVariable e.attributes |> concatDistinctSort) }
+          :: (List.map getLookupValueVariable e.attributes |> concatDistinctSort) }
 
   let internalInterfaces =
-    [ { entityInterfaces._base with vars = e.attributes |> List.map (getBaseVariable e.optionSets) |> concatDistinctSort }
+    [ { entityInterfaces._base with vars = e.attributes |> List.map (getScalarVariable e.optionSets) |> concatDistinctSort }
       { entityInterfaces.resultOneToMany with vars = e.oneToManyRelationships |> List.choose (getOneToManyVar nameMap false) |> sortByName }
       { entityInterfaces.resultManyToMany with vars = e.manyToManyRelationships |> List.choose (getManyToManyVar nameMap false e.logicalName) |> sortByName }
       { entityInterfaces.resultRelationships with vars = e.manyToOneRelationships |> List.choose (getManyToOneVar nameMap false) |> sortByName}
