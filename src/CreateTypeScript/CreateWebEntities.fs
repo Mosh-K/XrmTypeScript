@@ -19,8 +19,8 @@ let withNamespace (ns: string) (str: string) = $"{ns}.{str}"
 let entityTag = 
   Variable.Create("\"@odata.etag\"", TsType.String)
 
-let entityId (e: XrmEntity, optional ) =
-  Variable.Create(e.idAttribute, TsType.String, optional = optional)
+let entityId (entity: XrmEntity, optional ) =
+  Variable.Create(entity.idAttribute, TsType.String, optional = optional)
 
 let valueInfix (s: string) = $"_{s}_value"
 
@@ -33,9 +33,6 @@ let formattedName (a: XrmAttribute) =
 
 (** Various type helper functions *)
 let sortByName = List.sortBy (fun (x: Variable) -> x.name)
-
-let concatDistinctSort = 
-  List.concat >> List.distinctBy (fun (x: Variable) -> x.name) >> sortByName
 
 let hasFormattedValue a = 
   match a.specialType, a.varType with
@@ -59,134 +56,159 @@ let getScalarType (attr: XrmAttribute) =
   | _ -> attr.varType
 
 (** Variable functions *)
-let getBindVariables (nameMap: Map<string, EntityInfo>) isUpdate attrMap (rel: OneToManyRelationshipMetadata) =
-  Map.tryFind rel.ReferencingAttribute attrMap
-  ?>> fun attr ->
-    (match attr.createable && isUpdate = attr.updateable with
-     | false -> None
-     | true ->
-       Some $"\"{rel.ReferencingEntityNavigationPropertyName |> sanitizeNavProp}@odata.bind\"")
-    ?>> fun name ->
-      let relatedInfo = resolveRelatedEntities nameMap rel.ReferencedEntity
-      match relatedInfo with
-      | [] -> None
-      | _  ->
-        let bindType =
-          relatedInfo
-          |> List.map (fun e -> TsType.Custom $"`/{e.EntitySetName}(${{string}})`")
-          |> TsType.Union
-        Some(Variable.Create(
-          name,
-          bindType,
-          Comment.Create(relatedInfo |> List.map (fun e -> e.DisplayName) |> String.concat " | "),
-          optional = true
-        ))
+let getBindVariables (nameMap: Map<string, EntityInfo>) isUpdate (entity: XrmEntity) =
+  let attrMap = entity.attributes |> List.map (fun a -> a.logicalName, a) |> Map.ofList
+  entity.manyToOneRelationships
+  |> List.choose (fun rel ->
+    Map.tryFind rel.ReferencingAttribute attrMap
+    ?>> fun attr ->
+      (match attr.createable && isUpdate = attr.updateable with
+       | false -> None
+       | true ->
+         Some $"\"{rel.ReferencingEntityNavigationPropertyName |> sanitizeNavProp}@odata.bind\"")
+      ?>> fun name ->
+        let relatedInfo = resolveRelatedEntities nameMap rel.ReferencedEntity
+        match relatedInfo with
+        | [] -> None
+        | _  ->
+          let bindType =
+            relatedInfo
+            |> List.map (fun e -> TsType.Custom $"`/{e.EntitySetName}(${{string}})`")
+            |> TsType.Union
+          Some(Variable.Create(
+            name,
+            bindType,
+            Comment.Create(relatedInfo |> List.map (fun e -> e.DisplayName) |> String.concat " | "),
+            optional = true
+          )))
+  |> sortByName
 
-let getLookupValueVariable (a: XrmAttribute) =
-  match a.specialType with
-  | SpecialType.EntityReference ->
-    [ Variable.Create(
+let getLookupValueVariables (attrs: XrmAttribute list) =
+  attrs
+  |> List.choose (fun a ->
+    match a.specialType with
+    | SpecialType.EntityReference ->
+      Some(Variable.Create(
         valueInfix a.logicalName,
         TsType.String,
         getAttributeComment a None,
         optional = true
-      ) ]
-  | _ -> []
+      ))
+    | _ -> None)
+  |> sortByName
 
 let private toInterfaceName forCreate schemaName =
   if forCreate then $"{schemaName}.{CREATE_INTERFACE}" else schemaName
 
-let getManyToOneVar (nameMap: Map<string, EntityInfo>) (forCreate: bool) (rel: OneToManyRelationshipMetadata) =
-  let relatedInfo = resolveRelatedEntities nameMap rel.ReferencedEntity
-  match relatedInfo with
-  | [] -> None
-  | _  ->
-    let varType =
-      relatedInfo
-      |> List.map (fun e -> TsType.Custom(toInterfaceName forCreate e.SchemaName))
-      |> fun tys -> TsType.Union(tys @ [ TsType.Null ])
-    Some(Variable.Create(
-      rel.ReferencingEntityNavigationPropertyName |> sanitizeNavProp,
-      varType,
-      Comment.Create(relatedInfo |> List.map (fun e -> e.DisplayName) |> String.concat " | ", relType = RelType.ManyToOne),
-      optional = true
-    ))
+let getManyToOneVars (nameMap: Map<string, EntityInfo>) (forCreate: bool) (rels: OneToManyRelationshipMetadata list) =
+  rels
+  |> List.choose (fun rel ->
+    let relatedInfo = resolveRelatedEntities nameMap rel.ReferencedEntity
+    match relatedInfo with
+    | [] -> None
+    | _  ->
+      let varType =
+        relatedInfo
+        |> List.map (fun e -> TsType.Custom(toInterfaceName forCreate e.SchemaName))
+        |> fun tys -> TsType.Union(tys @ [ TsType.Null ])
+      Some(Variable.Create(
+        rel.ReferencingEntityNavigationPropertyName |> sanitizeNavProp,
+        varType,
+        Comment.Create(relatedInfo |> List.map (fun e -> e.DisplayName) |> String.concat " | ", relType = RelType.ManyToOne),
+        optional = true
+      )))
+  |> sortByName
 
-let getOneToManyVar (nameMap: Map<string, EntityInfo>) (forCreate: bool) (rel: OneToManyRelationshipMetadata) =
-  Map.tryFind rel.ReferencingEntity nameMap
-  |> Option.map (fun eInfo ->
-    let varType =
-      TsType.Union
-        [ TsType.Array(TsType.Custom(toInterfaceName forCreate eInfo.SchemaName))
-          TsType.Null ]
-    Variable.Create(
-      rel.ReferencedEntityNavigationPropertyName |> sanitizeNavProp,
-      varType,
-      Comment.Create(eInfo.DisplayName, relType = RelType.OneToMany),
-      optional = true
-    ))
+let getOneToManyVars (nameMap: Map<string, EntityInfo>) (forCreate: bool) (rels: OneToManyRelationshipMetadata list) =
+  rels
+  |> List.choose (fun rel ->
+    Map.tryFind rel.ReferencingEntity nameMap
+    |> Option.map (fun eInfo ->
+      let varType =
+        TsType.Union
+          [ TsType.Array(TsType.Custom(toInterfaceName forCreate eInfo.SchemaName))
+            TsType.Null ]
+      Variable.Create(
+        rel.ReferencedEntityNavigationPropertyName |> sanitizeNavProp,
+        varType,
+        Comment.Create(eInfo.DisplayName, relType = RelType.OneToMany),
+        optional = true
+      )))
+  |> sortByName
 
-let getManyToManyVar (nameMap: Map<string, EntityInfo>) (forCreate: bool) logicalName (rel: ManyToManyRelationshipMetadata) =
-  let navProp =
-    if logicalName = rel.Entity2LogicalName then rel.Entity1NavigationPropertyName
-    else rel.Entity2NavigationPropertyName
-  let otherLogical =
-    if logicalName = rel.Entity2LogicalName then rel.Entity1LogicalName
-    else rel.Entity2LogicalName
-  Map.tryFind otherLogical nameMap
-  |> Option.map (fun eInfo ->
-    let varType =
-      TsType.Union
-        [ TsType.Array(TsType.Custom(toInterfaceName forCreate eInfo.SchemaName))
-          TsType.Null ]
-    Variable.Create(
-      navProp |> sanitizeNavProp,
-      varType,
-      Comment.Create(eInfo.DisplayName, relType = RelType.ManyToMany),
-      optional = true
-    ))
+let getManyToManyVars (nameMap: Map<string, EntityInfo>) (forCreate: bool) (entity: XrmEntity) =
+  entity.manyToManyRelationships
+  |> List.choose (fun rel ->
+    let navProp =
+      if entity.logicalName = rel.Entity2LogicalName then rel.Entity1NavigationPropertyName
+      else rel.Entity2NavigationPropertyName
+    let otherLogical =
+      if entity.logicalName = rel.Entity2LogicalName then rel.Entity1LogicalName
+      else rel.Entity2LogicalName
+    Map.tryFind otherLogical nameMap
+    |> Option.map (fun eInfo ->
+      let varType =
+        TsType.Union
+          [ TsType.Array(TsType.Custom(toInterfaceName forCreate eInfo.SchemaName))
+            TsType.Null ]
+      Variable.Create(
+        navProp |> sanitizeNavProp,
+        varType,
+        Comment.Create(eInfo.DisplayName, relType = RelType.ManyToMany),
+        optional = true
+      )))
+  |> sortByName
 
-let getFormattedResultVariable (options: OptionSet list) (attr: XrmAttribute) =
-  match hasFormattedValue attr with
-  | true ->
-    [ Variable.Create(
+let getFormattedResultVariables (entity: XrmEntity) =
+  entity.attributes
+  |> List.choose (fun attr ->
+    match hasFormattedValue attr with
+    | true ->
+      Some(Variable.Create(
         formattedName attr,
         TsType.String,
-        getAttributeComment attr (Some options),
+        getAttributeComment attr (Some entity.optionSets),
         optional = true
-      ) ]
-  | false -> []
+      ))
+    | false -> None)
+  |> sortByName
 
-let getLookupNameVariable (a: XrmAttribute) =
-  match a.targetEntitySets with
-  | None
-  | Some [||] -> None
-  | Some tes ->
-    let unionType =
-      tes
-      |> Array.map (fun (n, _, _) -> TsType.Custom $"\"{n}\"")
-      |> Array.toList
-      |> TsType.Union
+let getLookupNameVariables (attrs: XrmAttribute list) =
+  attrs
+  |> List.choose (fun a ->
+    match a.targetEntitySets with
+    | None
+    | Some [||] -> None
+    | Some tes ->
+      let unionType =
+        tes
+        |> Array.map (fun (n, _, _) -> TsType.Custom $"\"{n}\"")
+        |> Array.toList
+        |> TsType.Union
 
-    Some(
-      Variable.Create(
-        $"\"{valueInfix a.logicalName}@Microsoft.Dynamics.CRM.lookuplogicalname\"",
-        unionType,
-        getAttributeComment a None,
-        optional = true
-      )
-    )
+      Some(
+        Variable.Create(
+          $"\"{valueInfix a.logicalName}@Microsoft.Dynamics.CRM.lookuplogicalname\"",
+          unionType,
+          getAttributeComment a None,
+          optional = true
+        )
+      ))
+  |> sortByName
 
-let getScalarVariable (options: OptionSet list) (attr: XrmAttribute) =
-  match attr.specialType with
-  | SpecialType.EntityReference -> []
-  | _ ->
-    [ Variable.Create(
+let getScalarVariables (entity: XrmEntity) =
+  entity.attributes
+  |> List.choose (fun attr ->
+    match attr.specialType with
+    | SpecialType.EntityReference -> None
+    | _ ->
+      Some(Variable.Create(
         attr.logicalName,
         TsType.Union [ getScalarType attr; TsType.Null ],
-        getAttributeComment attr (Some options),
+        getAttributeComment attr (Some entity.optionSets),
         optional = true
-      ) ]
+      )))
+  |> sortByName
 
 (** Code creation methods *)
 type EntityInterfaces = {
@@ -204,8 +226,8 @@ type EntityInterfaces = {
   result: Interface
 }
 
-let getBlankEntityInterfaces (e: XrmEntity) =
-  let comment = Comment.Create e.displayName
+let getBlankEntityInterfaces (entity: XrmEntity) =
+  let comment = Comment.Create entity.displayName
 
   let bn = "Base"
   let ro2m = "ResultOneToMany"
@@ -230,53 +252,32 @@ let getBlankEntityInterfaces (e: XrmEntity) =
     create = Interface.Create(CREATE_INTERFACE, comment, [ UPDATE_INTERFACE ])
     result =
       Interface.Create(
-        e.schemaName,
+        entity.schemaName,
         comment,
-        [ bn; rrn; frn; lrn ] |> List.map (withNamespace $"{e.schemaName}.{INTERNAL_NS}")
+        [ bn; rrn; frn; lrn ] |> List.map (withNamespace $"{entity.schemaName}.{INTERNAL_NS}")
       ) }
         
 /// Create entity interfaces
-let getEntityInterfaceLines (nameMap: Map<string, EntityInfo>) (e: XrmEntity) =
-  let entityInterfaces = getBlankEntityInterfaces e
-
-  let attrMap = e.attributes |> List.map (fun a -> a.logicalName, a) |> Map.ofList
+let getEntityInterfaceLines (nameMap: Map<string, EntityInfo>) (entity: XrmEntity) =
+  let entityInterfaces = getBlankEntityInterfaces entity
 
   let update =
-    { entityInterfaces.update with
-        vars =
-          entityId (e, true)
-          :: (e.manyToOneRelationships
-              |> List.choose (getBindVariables nameMap true attrMap)
-              |> sortByName) }
-
+    { entityInterfaces.update with vars = entityId (entity, true) :: getBindVariables nameMap true entity }
   let create =
-    { entityInterfaces.create with
-        vars =
-          e.manyToOneRelationships
-          |> List.choose (getBindVariables nameMap false attrMap)
-          |> sortByName }
-
+    { entityInterfaces.create with vars = getBindVariables nameMap false entity }
   let result =
-    { entityInterfaces.result with
-        vars =
-          entityTag
-          :: entityId (e, false)
-          :: (List.map getLookupValueVariable e.attributes |> concatDistinctSort) }
+    { entityInterfaces.result with vars = entityTag :: entityId (entity, false) :: getLookupValueVariables entity.attributes }
 
   let internalInterfaces =
-    [ { entityInterfaces._base with vars = e.attributes |> List.map (getScalarVariable e.optionSets) |> concatDistinctSort }
-      { entityInterfaces.resultOneToMany with vars = e.oneToManyRelationships |> List.choose (getOneToManyVar nameMap false) |> sortByName }
-      { entityInterfaces.resultManyToMany with vars = e.manyToManyRelationships |> List.choose (getManyToManyVar nameMap false e.logicalName) |> sortByName }
-      { entityInterfaces.resultRelationships with vars = e.manyToOneRelationships |> List.choose (getManyToOneVar nameMap false) |> sortByName}
-      { entityInterfaces.createOneToMany with vars = e.oneToManyRelationships |> List.choose (getOneToManyVar nameMap true) |> sortByName }
-      { entityInterfaces.createManyToMany with vars = e.manyToManyRelationships |> List.choose (getManyToManyVar nameMap true e.logicalName) |> sortByName }
-      { entityInterfaces.createRelationships with vars = e.manyToOneRelationships |> List.choose (getManyToOneVar nameMap true) |> sortByName}
-      { entityInterfaces.formattedResult with
-          vars =
-            e.attributes
-            |> List.map (getFormattedResultVariable e.optionSets)
-            |> concatDistinctSort }
-      { entityInterfaces.lookupResult with vars = e.attributes |> List.choose getLookupNameVariable |> sortByName } ]
+    [ { entityInterfaces._base with vars = getScalarVariables entity }
+      { entityInterfaces.resultOneToMany with vars = getOneToManyVars nameMap false entity.oneToManyRelationships }
+      { entityInterfaces.resultManyToMany with vars = getManyToManyVars nameMap false entity }
+      { entityInterfaces.resultRelationships with vars = getManyToOneVars nameMap false entity.manyToOneRelationships }
+      { entityInterfaces.createOneToMany with vars =  getOneToManyVars nameMap true entity.oneToManyRelationships }
+      { entityInterfaces.createManyToMany with vars = getManyToManyVars nameMap true entity }
+      { entityInterfaces.createRelationships with vars = getManyToOneVars nameMap true entity.manyToOneRelationships }
+      { entityInterfaces.formattedResult with vars = getFormattedResultVariables entity }
+      { entityInterfaces.lookupResult with vars = getLookupNameVariables entity.attributes } ]
 
   Namespace.Create(
     WEB_NS,
@@ -284,7 +285,7 @@ let getEntityInterfaceLines (nameMap: Map<string, EntityInfo>) (e: XrmEntity) =
     interfaces = [ result ],
     namespaces =
       [ Namespace.Create(
-          e.schemaName,
+          entity.schemaName,
           interfaces = [ create; update ],
           namespaces = [ Namespace.Create(INTERNAL_NS, interfaces = internalInterfaces) ]
         ) ]
