@@ -159,7 +159,7 @@ let getManyToManyVars (nameMap: Map<string, EntityInfo>) (forWrite: bool) (entit
       Variable.Create(
         navProp |> sanitizeNavProp,
         varType,
-        Comment.Create(eInfo.DisplayName, relType = RelType.ManyToMany),
+        Comment.Create(eInfo.DisplayName, relType = RelType.ManyToMany, intersectTable = rel.IntersectEntityName),
         optional = true
       )))
   |> sortByName

@@ -55,12 +55,14 @@ and Comment =
     targetEntitySets: (string * string * string)[] option
     relType: RelType option
     tab: string
+    intersectTable: string
     link: string }
-  static member Create(?displayName, ?setName, ?label, ?isPrimaryId, ?colType, ?tes, ?relType, ?tab, ?link) =
+  static member Create(?displayName, ?setName, ?intersectTable, ?label, ?isPrimaryId, ?colType, ?tes, ?relType, ?tab, ?link) =
     { displayName = defaultArg displayName ""
       setName = defaultArg setName ""
       label = defaultArg label ""
       isPrimaryId = defaultArg isPrimaryId false
+      intersectTable = defaultArg intersectTable ""
       colType = colType
       targetEntitySets = tes
       relType = relType
@@ -68,11 +70,12 @@ and Comment =
       link = defaultArg link "" }
   member c.ToCommentStrings() =
     let dsLine = if String.IsNullOrWhiteSpace c.displayName then None else Some $"**{c.displayName.Trim()}**"
-    let setNameLine = if String.IsNullOrWhiteSpace c.setName then None else Some $"Set Name: {c.setName.Trim()}"
+    let setNameLine = if String.IsNullOrWhiteSpace c.setName then None else Some $"Set Name: `{c.setName.Trim()}`"
     let tabLine = if String.IsNullOrWhiteSpace c.tab then None else Some $"Tab: {c.tab.Trim()}"
     let labelLine = if String.IsNullOrWhiteSpace c.label then None else Some $"Label: {c.label.Trim()}"
     let isPrimaryIdLine = if c.isPrimaryId then Some $"Primary ID" else None
     let colTypeLine = c.colType |> Option.map (fun t -> $"Column Type: {t}")
+    let intersectTableLine = if String.IsNullOrWhiteSpace c.intersectTable then None else Some $"Intersect Table: `{c.intersectTable.Trim()}`"
     let tableLine =
       match c.targetEntitySets with
       | None | Some [||] -> None
@@ -84,7 +87,7 @@ and Comment =
     let relTypeLine = c.relType |> Option.map (fun t -> $"Relationship Type: {t}")
     let linkLine = if String.IsNullOrWhiteSpace c.link then None else Some (sprintf "{@link %s}" (c.link.Trim()))
 
-    let lines = [ dsLine; setNameLine; tabLine; labelLine; isPrimaryIdLine; colTypeLine; tableLine; relTypeLine; linkLine ] |> List.choose id
+    let lines = [ dsLine; setNameLine; tabLine; labelLine; isPrimaryIdLine; colTypeLine; tableLine; relTypeLine; linkLine; intersectTableLine ] |> List.choose id
     match lines with
     | [] -> []
     | [ line ] -> [ $"/** {line} */" ]
