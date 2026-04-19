@@ -77,9 +77,9 @@ let interpretAttribute (nameMap: Map<string, EntityInfo>) labelMapping (a: Attri
     specialType = sType
     colType = aType
     targetEntitySets = targetEntitySets
-    readable = a.IsValidForRead.GetValueOrDefault true
-    createable = a.IsValidForCreate.GetValueOrDefault true
-    updateable = a.IsValidForUpdate.GetValueOrDefault true
+    readable = a.IsValidForRead.GetValueOrDefault false
+    createable = a.IsValidForCreate.GetValueOrDefault false
+    updateable = a.IsValidForUpdate.GetValueOrDefault false
     displayName = getLabel a.DisplayName
   }
 
@@ -122,4 +122,5 @@ let interpretEntity (nameMap: Map<string, EntityInfo>) labelMapping (metadata:En
     manyToOneRelationships = metadata.ManyToOneRelationships |> List.ofArray
     manyToManyRelationships = metadata.ManyToManyRelationships |> List.ofArray
     displayName = getLabel metadata.DisplayName
+    isIntersect = metadata.IsIntersect.GetValueOrDefault false
   }

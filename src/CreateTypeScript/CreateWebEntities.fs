@@ -310,8 +310,35 @@ let getBlankEntityInterfaces (entity: XrmEntity) =
         [ rScalars; rRelations; frmt; lookupN; lookupV ] |> List.map (withNamespace $"{entity.schemaName}.{INTERNAL_NS}")
       ) }
         
+let getIntersectEntityInterfaceLines (entity: XrmEntity) =
+  let comment = Comment.Create(entity.displayName, setName = entity.setName)
+  let rScalars = "ReadableScalars"
+  let readableScalars =
+    Interface.Create(rScalars, vars = getScalarVars (fun a -> not a.createable) entity)
+  let read =
+    Interface.Create(
+      entity.schemaName,
+      comment,
+      [ $"{entity.schemaName}.{INTERNAL_NS}.{rScalars}" ],
+      vars = [ entityTag; entityId (entity, false) ]
+    )
+  Namespace.Create(
+    WEB_NS,
+    declare = true,
+    interfaces = [ read ],
+    namespaces =
+      [ Namespace.Create(
+          entity.schemaName,
+          namespaces = [ Namespace.Create(INTERNAL_NS, interfaces = [ readableScalars ]) ]
+        ) ]
+  )
+  |> CreateCommon.skipNsIfEmpty
+
 /// Create entity interfaces
 let getEntityInterfaceLines (nameMap: Map<string, EntityInfo>) (entity: XrmEntity) =
+  if entity.isIntersect then getIntersectEntityInterfaceLines entity
+  else
+
   let entityInterfaces = getBlankEntityInterfaces entity
 
   let internalInterfaces =

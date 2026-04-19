@@ -45,6 +45,7 @@ type XrmEntity = {
   manyToOneRelationships: OneToManyRelationshipMetadata list
   manyToManyRelationships: ManyToManyRelationshipMetadata list
   displayName: string
+  isIntersect: bool
 }
 
 // Forms
