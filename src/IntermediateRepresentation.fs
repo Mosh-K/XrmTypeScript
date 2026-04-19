@@ -37,7 +37,8 @@ type XrmAttribute = {
 type XrmEntity = {
   schemaName: string
   logicalName: string
-  idAttribute: string
+  setName: string
+  idAttribute: XrmAttribute
   attributes: XrmAttribute list 
   optionSets: OptionSet list
   oneToManyRelationships: OneToManyRelationshipMetadata list

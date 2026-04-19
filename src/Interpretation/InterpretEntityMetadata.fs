@@ -114,7 +114,8 @@ let interpretEntity (nameMap: Map<string, EntityInfo>) labelMapping (metadata:En
 
   { XrmEntity.schemaName = metadata.SchemaName
     logicalName = metadata.LogicalName
-    idAttribute = metadata.PrimaryIdAttribute
+    setName = metadata.EntitySetName
+    idAttribute = attributes |> List.find (fun a -> a.logicalName = metadata.PrimaryIdAttribute)
     attributes = attributes
     optionSets = optionSets
     oneToManyRelationships = metadata.OneToManyRelationships |> List.ofArray

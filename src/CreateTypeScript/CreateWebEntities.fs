@@ -19,8 +19,13 @@ let withNamespace (ns: string) (str: string) = $"{ns}.{str}"
 let entityTag = 
   Variable.Create("\"@odata.etag\"", TsType.String)
 
-let entityId (entity: XrmEntity, optional ) =
-  Variable.Create(entity.idAttribute, TsType.String, optional = optional)
+let entityId (entity: XrmEntity, optional) =
+  Variable.Create(
+    entity.idAttribute.logicalName,
+    TsType.String,
+    comment = Comment.Create(entity.idAttribute.displayName, colType = entity.idAttribute.colType, isPrimaryId = true),
+    optional = optional
+  )
 
 let valueInfix (s: string) = $"_{s}_value"
 
@@ -201,7 +206,7 @@ let getScalarVars (filter: XrmAttribute -> bool) (entity: XrmEntity) =
   |> List.choose (fun attr ->
     match attr.specialType with
     | SpecialType.EntityReference -> None
-    | _ when attr.logicalName = entity.idAttribute -> None
+    | _ when attr.logicalName = entity.idAttribute.logicalName -> None
     | _ when not (filter attr) -> None
     | _ ->
       Some(Variable.Create(
@@ -241,7 +246,7 @@ type EntityInterfaces = {
 }
 
 let getBlankEntityInterfaces (entity: XrmEntity) =
-  let comment = Comment.Create entity.displayName
+  let comment = Comment.Create(entity.displayName, setName = entity.setName)
 
   let rScalars = "ReadableScalars"
   let cScalars = "CreatableScalars"
