@@ -67,7 +67,7 @@ let generateWebEntityDefs state =
     state.entities
     |> Array.Parallel.map (fun (e) ->
       let name = e.logicalName
-      let lines = getEntityInterfaceLines e
+      let lines = getEntityInterfaceLines state.nameMap e
 
       sprintf "%s/Web/%s.d.ts" state.outputDir name, 
       lines)
@@ -86,7 +86,7 @@ let generateXrmApiDefs state =
       interfaces =
         [ Interface.Create(
             "WebApiOffline",
-            funcs = getRetrieveFuncs state @ getRetrieveMultipleFuncs state
+            funcs = getRetrieveFuncs state.entities @ getRetrieveMultipleFuncs state.entities
           ) ],
       declare = true
     )

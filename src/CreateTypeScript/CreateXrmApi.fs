@@ -1,17 +1,16 @@
 module internal DG.XrmTypeScript.CreateXrmApi
 
+open IntermediateRepresentation
 open TsStringUtil
 open Constants
-open IntermediateRepresentation
 
 // retrieveRecord<T = any>(entityLogicalName: string, id: string, options?: string): Async.PromiseLike<T>;
 // retrieveMultipleRecords<T = any>(entityLogicalName: string, options?: string, maxPageSize?: number): Async.PromiseLike<RetrieveMultipleResult<T>>;
 
 (** XrmApi definitions *)
-let getRetrieveFuncs state =
-  state.entities
+let getRetrieveFuncs (rawEntities: XrmEntity array) =
+  rawEntities
   |> Array.toList
-  |> List.filter (fun e -> not e.isIntersect)
   |> List.sortBy (fun e -> e.logicalName)
   |> List.map (fun e ->
     Function.Create(
@@ -23,10 +22,9 @@ let getRetrieveFuncs state =
       Comment.Create e.displayName
     ))
 
-let getRetrieveMultipleFuncs state =
-  state.entities
+let getRetrieveMultipleFuncs (rawEntities: XrmEntity array) =
+  rawEntities
   |> Array.toList
-  |> List.filter (fun e -> not e.isIntersect)
   |> List.sortBy (fun e -> e.logicalName)
   |> List.map (fun e ->
     Function.Create(

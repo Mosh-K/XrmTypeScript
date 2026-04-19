@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+### Changed
+- WebEntities relationship variables are now split into typed `ManyToOne`, `OneToMany`, and `ManyToMany` sub-interfaces, directly mirroring the SDK metadata structure
+- Intersect (many-to-many junction) entities now generate simplified interfaces
+- `Create` and `Update` interfaces restructured: bind variables are derived from raw SDK relationship metadata rather than the intermediate representation
+- Entity primary ID attribute promoted to a full `XrmAttribute`, carrying display name and column type metadata into generated JSDoc comments
+
 ## [1.3.0] - 2026-04-15
 ### Changed
 - Release zip reorganized: all DLLs (except `FSharp.Core.dll`) moved into a `lib/` subdirectory, keeping only user-facing files at the zip root

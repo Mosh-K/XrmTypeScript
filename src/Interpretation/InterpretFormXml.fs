@@ -72,7 +72,7 @@ let getAttribute (enums:Map<string,TsType>) (entity: XrmEntity) (cField: Control
   let comment = 
     match attribute with
     | None -> Comment.Create cField.displayName
-    | Some attr -> Comment.Create(attr.displayName, colType = attr.colType, ?tes = attr.targetEntitySets, link = getLink entity attr)
+    | Some attr -> Comment.Create(attr.displayName, colType = attr.colType, ?tes = attr.targetEntitySets, link = getEnumLink entity.optionSets attr)
 
   let attrType = getAttributeType attribute
 
@@ -136,7 +136,7 @@ let getControl  (enums:Map<string,TsType>) (entity: XrmEntity) (cField:ControlFi
     | None -> Comment.Create cField.displayName
     | Some attr ->
       let label = if cField.displayName.Trim() <> attr.displayName.Trim() then cField.displayName else ""
-      Comment.Create(attr.displayName, label = label, colType = attr.colType, ?tes = attr.targetEntitySets, link = getLink entity attr)
+      Comment.Create(attr.displayName, label = label, colType = attr.colType, ?tes = attr.targetEntitySets, link = getEnumLink entity.optionSets attr)
     
   let cType = 
     match cField.controlClass with
@@ -158,7 +158,7 @@ let getControl  (enums:Map<string,TsType>) (entity: XrmEntity) (cField:ControlFi
     | WebResource           -> ControlType.WebResource
     | IFrame                -> ControlType.IFrame 
         
-    | Subgrid               -> ControlType.SubGrid (getTargetEntities cField.targetEntitySets attribute)
+    | Subgrid               -> ControlType.SubGrid
 
     | PartyListLookup 
     | RegardingLookup 
@@ -279,7 +279,7 @@ let getQuickViewFormControls : ControlField list -> XrmFormQuickViewForm list =
     | Some qf ->
       let qfHead = qf |> List.head
       let qfIds = XElement.Parse qfHead
-      let qfId = qfIds.Descendants(XName.Get("QuickFormId")) |> Seq.head
+      let qfId = qfIds.Descendants(XName.Get "QuickFormId") |> Seq.head
       let ref =
           let formId = System.Guid.Parse qfId.Value
           let entityName = qfId.Attribute(XName.Get("entityname")).Value
@@ -290,7 +290,7 @@ let getQuickViewFormControls : ControlField list -> XrmFormQuickViewForm list =
     | None -> None
   )
 
-let getControlFields (entity: XrmEntity) (form: XElement) : ControlField list =
+let getControlFields (form: XElement) : ControlField list =
     let controlDescriptions =
       form.Descendants(XName.Get "controlDescription")
       |> Seq.choose (fun cd -> 
@@ -303,7 +303,7 @@ let getControlFields (entity: XrmEntity) (form: XElement) : ControlField list =
       |> Map.ofSeq
 
     form.Descendants(XName.Get "cell")
-    |> Seq.filter (fun cell -> cell.Descendants(XName.Get "control") |> Seq.isEmpty |> not) // Filter out cells that don't have a control
+    |> Seq.filter (fun c -> c.Descendants(XName.Get "control") |> Seq.isEmpty |> not) // Filter out cells that don't have a control
     |> Seq.map (fun cell -> 
       let ctrl = cell.Descendants(XName.Get "control") |> Seq.head
       
@@ -315,10 +315,7 @@ let getControlFields (entity: XrmEntity) (form: XElement) : ControlField list =
 
       let targetEntities = 
         let parms = ctrl.Descendants(XName.Get "parameters") 
-        if Seq.isEmpty parms then
-          let rel = getValue ctrl "relationship"
-          entity.allRelationships
-          |> List.choose (fun r -> if r.schemaName = rel then Some r.relatedSetName else None)
+        if Seq.isEmpty parms then []
         else
           parms
           |> Seq.collect (fun p -> p.Elements(XName.Get "TargetEntityType"))
@@ -366,10 +363,10 @@ let getControlFields (entity: XrmEntity) (form: XElement) : ControlField list =
 /// Function to interpret a single FormXml
 let interpretFormXml (enums:Map<string,TsType>) (bpfFields: ControlField list option) entity (systemForm:Entity) =
   let bpfFields = bpfFields ?| []
-  let form = XElement.Parse(systemForm.GetAttributeValue<string>("formxml"))
+  let form = XElement.Parse(systemForm.GetAttributeValue<string> "formxml")
 
   let tabs: XrmFormTab list = 
-    form.Descendants(XName.Get("tab"))
+    form.Descendants(XName.Get "tab")
     |> Seq.choose (fun tab -> 
       let tabName = getValue tab "name"
       let tabHandle = if not (String.IsNullOrEmpty tabName) then tabName else getValue tab "id"
@@ -388,7 +385,7 @@ let interpretFormXml (enums:Map<string,TsType>) (bpfFields: ControlField list op
           else
           
             let controls = 
-              getControlFields entity section
+              getControlFields section
               |> List.choose (getControl enums entity)
               |> renameControls
               |> List.sortBy (fun (name, _, _, _, _,_) -> name)
@@ -415,7 +412,7 @@ let interpretFormXml (enums:Map<string,TsType>) (bpfFields: ControlField list op
 
  
   // Attributes and controls
-  let controlFields = getControlFields entity form
+  let controlFields = getControlFields form
 
   let stateAttr =
     if
@@ -435,9 +432,9 @@ let interpretFormXml (enums:Map<string,TsType>) (bpfFields: ControlField list op
 
   let compositeFields = getCompositeFields controlFields
 
-  let name = systemForm.GetAttributeValue<string>("name")
+  let name = systemForm.GetAttributeValue<string> "name"
   let typeInt = systemForm.GetAttributeValue<OptionSetValue>("type").Value
-  let logicalName = systemForm.GetAttributeValue<string>("objecttypecode")
+  let logicalName = systemForm.GetAttributeValue<string> "objecttypecode"
 
   systemForm.Id,
   { XrmForm.name =  name |> Utility.sanitizeString

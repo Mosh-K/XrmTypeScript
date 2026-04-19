@@ -51,13 +51,13 @@ let keywords = [ "import"; "export"; "class"; "enum"; "var"; "for"; "if"; "else"
 let emptyLabel = "_EmptyString"
 let (|IsKeyword|) = keywords.Contains
 
-let applyLabelMappings (labelMapping: (string * string)[] option) (label: string) =
+let applyLabelMappings (labelMapping: (string * string)[]) (label: string) =
   match labelMapping with
-  | Some mapping -> 
-    mapping 
+  | [||] -> label
+  | _ ->
+    labelMapping
     |> Array.fold (fun (acc:string) (elem:(string*string)) -> 
        Regex.Replace(acc,fst elem,snd elem)) label
-  | None  -> label;;
 
 let getLabel (label: Label) = 
   match label.UserLocalizedLabel with

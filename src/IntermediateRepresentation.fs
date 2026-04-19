@@ -1,5 +1,7 @@
 ﻿module DG.XrmTypeScript.IntermediateRepresentation
 
+open Microsoft.Xrm.Sdk.Metadata
+
 type Option = {
   label: string 
   value: int
@@ -18,7 +20,6 @@ type SpecialType =
   | Money 
   | Guid 
   | EntityReference
-  | Decimal
 
 type XrmAttribute = { 
   schemaName: string
@@ -33,30 +34,18 @@ type XrmAttribute = {
   displayName: string
 }
 
-type XrmRelationship = {
-  schemaName: string
-  attributeName: string
-  displayName: string
-  relType: RelType
-  relatedSetName: string
-  relatedSchemaName: string
-  navProp: string
-  referencing: bool
-}
-
 type XrmEntity = {
-  typecode: int
   schemaName: string
   logicalName: string
-  entitySetName: string option
-  idAttribute: string
-  isIntersect: bool
+  setName: string
+  idAttribute: XrmAttribute
   attributes: XrmAttribute list 
   optionSets: OptionSet list
-  availableRelationships: XrmRelationship list
-  allRelationships: XrmRelationship list
-  relatedEntities: string list 
+  oneToManyRelationships: OneToManyRelationshipMetadata list
+  manyToOneRelationships: OneToManyRelationshipMetadata list
+  manyToManyRelationships: ManyToManyRelationshipMetadata list
   displayName: string
+  isIntersect: bool
 }
 
 // Forms
@@ -67,7 +56,7 @@ type ControlType =
   | Lookup of string
   | OptionSet
   | MultiSelectOptionSet
-  | SubGrid of string
+  | SubGrid
   | WebResource
   | IFrame
   | KBSearch
@@ -155,4 +144,5 @@ type InterpretedState = {
   entities: XrmEntity[]
   forms: XrmForm[]
   bpfControls: Map<string,ControlField list>
+  nameMap: Map<string, EntityInfo>
 }

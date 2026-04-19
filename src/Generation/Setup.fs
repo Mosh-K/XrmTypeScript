@@ -68,20 +68,21 @@ let intersectForms formDict formsToIntersect =
   |> Seq.toArray
 
 /// Interprets the raw CRM data into an intermediate state used for further generation
-let interpretCrmData out formsToIntersect (rawState: RawState) labelMapping =
+let interpretCrmData (gSettings: XdtGenerationSettings) (rawState: RawState) =
   printf "Interpreting data..."
 
   let entityMetadata =
-    rawState.metadata |> Array.Parallel.map (interpretEntity rawState.nameMap labelMapping)
+    rawState.metadata |> Array.Parallel.map (interpretEntity rawState.nameMap gSettings.labelMapping)
 
   let bpfControls = interpretBpfs rawState.bpfData
 
   let formDict = interpretFormXmls entityMetadata rawState.formData bpfControls
-  let forms = intersectForms formDict formsToIntersect
+  let forms = intersectForms formDict gSettings.formIntersects
   printfn "Done!"
 
   { InterpretedState.entities = entityMetadata
     bpfControls = bpfControls
     forms = forms
-    outputDir = out 
+    outputDir = gSettings.out
+    nameMap = rawState.nameMap
   }

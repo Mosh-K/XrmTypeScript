@@ -53,14 +53,14 @@ type XrmTypeScript private () =
         skipInactiveForms = skipInactiveForms ?| true }
 
     let gSettings =
-      { XdtGenerationSettings.out = outDir
+      { XdtGenerationSettings.out = outDir ?| "."
         crmVersion = crmVersion
         useDeprecated = useDeprecated ?| false
         skipForms = skipForms ?| false
         oneFile = oneFile ?| false
         web = web ?| false
-        formIntersects = formIntersects
-        labelMapping = labelMapping
+        formIntersects = formIntersects ?| [||]
+        labelMapping = labelMapping ?| [||]
         skipXrmApi = skipXrmApi ?| false }
 
     XrmTypeScript.GenerateFromCrm(xrmAuth, rSettings, gSettings)

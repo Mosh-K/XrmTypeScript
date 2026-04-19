@@ -20,17 +20,15 @@ let retrieveRawState xrmAuth rSettings =
   retrieveCrmData crmVersion entities mainProxy rSettings.skipInactiveForms
 
 /// Main generator function
-let generateFromRaw gSettings rawState =
-  let out = gSettings.out ?| "."
-  let formIntersects = gSettings.formIntersects ?| [||]
+let generateFromRaw (gSettings: XdtGenerationSettings) rawState =
   let crmVersion = gSettings.crmVersion ?| rawState.crmVersion
 
   // Pre-generation tasks 
-  clearOldOutputFiles out
+  clearOldOutputFiles gSettings.out
 
   // Interpret data and generate resource files
   let data =
-    interpretCrmData out formIntersects rawState gSettings.labelMapping
+    interpretCrmData gSettings rawState
 
   let defs = 
     seq {
@@ -47,7 +45,7 @@ let generateFromRaw gSettings rawState =
     |> Array.ofSeq
 
   printf "Writing to files..."
-  copyResourceDirectly out "xrm.d.ts" "xrm.d.ts"
+  copyResourceDirectly gSettings.out "xrm.d.ts" "xrm.d.ts"
 
   match gSettings.oneFile with
   | false -> 
@@ -57,6 +55,6 @@ let generateFromRaw gSettings rawState =
       File.WriteAllLines(path, lines)
     )
   | true  -> 
-    let singleFilePath = Path.Combine(out, "context.d.ts")
+    let singleFilePath = Path.Combine(gSettings.out, "context.d.ts")
     defs |> Array.Parallel.map snd |> List.concat |> fun lines -> File.WriteAllLines(singleFilePath, lines)
   printfn "Done!"

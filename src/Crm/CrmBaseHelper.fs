@@ -10,7 +10,6 @@ open Microsoft.Xrm.Sdk.Messages
 open Microsoft.Xrm.Sdk.Query
 open Microsoft.Xrm.Sdk.Metadata
 open Microsoft.Crm.Sdk.Messages
-open Microsoft.Xrm.Sdk.WebServiceClient
 
 // Execute request
 let getResponse<'T when 'T :> OrganizationResponse> (proxy:IOrganizationService) request =
@@ -141,42 +140,10 @@ let getAllOptionSetMetadata proxy =
   let resp = getResponse<RetrieveAllOptionSetsResponse> proxy request
   resp.OptionSetMetadata
 
-    
-// Find relationship intersect entities
-let findRelationEntities allLogicalNames (metadata:EntityMetadata[]) =
-  metadata
-  |> Array.Parallel.map (fun md ->
-    md.ManyToManyRelationships 
-    |> Array.filter (fun m2m -> 
-      m2m.Entity1LogicalName = md.LogicalName && 
-      Set.contains m2m.Entity2LogicalName allLogicalNames &&
-      not(Set.contains m2m.IntersectEntityName allLogicalNames))
-    |> Array.map (fun m2m -> m2m.IntersectEntityName))
-  |> Array.concat
-  |> Array.distinct
-
-
-// Retrieve specific entity metadata along with any intersect
+// Retrieve specific entity metadata
 let getSpecificEntitiesAndDependentMetadata proxy logicalNames =
   // TODO: either figure out the best degree of parallelism through code, or add it as a setting
-  let getMetadata = getEntityMetadataBulk proxy
-  let entities = getMetadata logicalNames
-
-  let set = logicalNames |> Set.ofArray
-  let needActivityParty =
-    not (set.Contains "activityparty") &&
-    entities 
-    |> Array.exists (fun m -> 
-      m.Attributes 
-      |> Array.exists (fun a -> 
-        a.AttributeType.GetValueOrDefault() = AttributeTypeCode.PartyList))
-
-  let additionalEntities = 
-    findRelationEntities set entities
-    |> if needActivityParty then Array.append [|"activityparty"|] else id
-    |> getMetadata
-
-  Array.append entities additionalEntities
+  getEntityMetadataBulk proxy logicalNames
   |> Array.distinctBy (fun e -> e.LogicalName)
   |> Array.sortBy (fun e -> e.LogicalName)
 
