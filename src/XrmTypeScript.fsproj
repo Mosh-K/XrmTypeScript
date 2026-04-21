@@ -28,6 +28,7 @@
     <Compile Include="Domain.fs" />
     <Compile Include="Utility.fs" />
     <Compile Include="Constants.fs" />
+    <Compile Include="TypeScript\Comment.fs" />
     <Compile Include="TypeScript\TypeScript.fs" />
     <Compile Include="TypeScript\TsStringUtil.fs" />
     <Compile Include="Crm\CrmAuth.fs" />

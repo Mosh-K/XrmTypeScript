@@ -23,7 +23,7 @@ let entityId (entity: XrmEntity, optional) =
   Variable.Create(
     entity.idAttribute.logicalName,
     TsType.String,
-    comment = Comment.Create(entity.idAttribute.displayName, colType = entity.idAttribute.colType, isPrimaryId = true),
+    comment = Comment.Attribute(entity.idAttribute.displayName, colType = entity.idAttribute.colType, isPrimaryId = true),
     optional = optional
   )
 
@@ -53,7 +53,7 @@ let getAttributeComment (attr: XrmAttribute) (options: OptionSet list option) =
     match options with
     | Some opts -> getEnumLink opts attr
     | None -> ""
-  Comment.Create(attr.displayName, colType = attr.colType, ?tes = attr.targetEntitySets, link = link)
+  Comment.Attribute(attr.displayName, colType = attr.colType, ?tes = attr.targetEntitySets, link = link)
 
 let getScalarType (attr: XrmAttribute) =
   match attr.specialType with
@@ -83,7 +83,7 @@ let getBindVars (nameMap: Map<string, EntityInfo>) (filter: XrmAttribute -> bool
           Some(Variable.Create(
             name,
             bindType,
-            Comment.Create(relatedInfo |> List.map (fun e -> e.DisplayName) |> String.concat " | "),
+            Comment.Basic(relatedInfo |> List.map (fun e -> e.DisplayName) |> String.concat " | "),
             optional = true
           )))
   |> sortByName
@@ -119,7 +119,7 @@ let getManyToOneVars (nameMap: Map<string, EntityInfo>) (forWrite: bool) (rels: 
       Some(Variable.Create(
         rel.ReferencingEntityNavigationPropertyName |> sanitizeNavProp,
         varType,
-        Comment.Create(relatedInfo |> List.map (fun e -> e.DisplayName) |> String.concat " | ", relType = RelType.ManyToOne),
+        Comment.Relationship(relatedInfo |> List.map (fun e -> e.DisplayName) |> String.concat " | ", relType = RelType.ManyToOne, partner = (rel.ReferencedEntityNavigationPropertyName |> sanitizeNavProp)),
         optional = true
       )))
   |> sortByName
@@ -136,7 +136,7 @@ let getOneToManyVars (nameMap: Map<string, EntityInfo>) (forWrite: bool) (rels: 
       Variable.Create(
         rel.ReferencedEntityNavigationPropertyName |> sanitizeNavProp,
         varType,
-        Comment.Create(eInfo.DisplayName, relType = RelType.OneToMany),
+        Comment.Relationship(eInfo.DisplayName, relType = RelType.OneToMany, partner = (rel.ReferencingEntityNavigationPropertyName |> sanitizeNavProp)),
         optional = true
       )))
   |> sortByName
@@ -144,12 +144,14 @@ let getOneToManyVars (nameMap: Map<string, EntityInfo>) (forWrite: bool) (rels: 
 let getManyToManyVars (nameMap: Map<string, EntityInfo>) (forWrite: bool) (entity: XrmEntity) =
   entity.manyToManyRelationships
   |> List.choose (fun rel ->
-    let navProp =
-      if entity.logicalName = rel.Entity2LogicalName then rel.Entity1NavigationPropertyName
-      else rel.Entity2NavigationPropertyName
-    let otherLogical =
-      if entity.logicalName = rel.Entity2LogicalName then rel.Entity1LogicalName
-      else rel.Entity2LogicalName
+    // True for an intersect's entity single ManyToOne relationship, false for regular ManyToMany relationships
+    if entity.logicalName <> rel.Entity1LogicalName && entity.logicalName <> rel.Entity2LogicalName then None
+    else
+    let navProp, partnerNavProp, otherLogical =
+      if entity.logicalName = rel.Entity2LogicalName then
+        rel.Entity1NavigationPropertyName, rel.Entity2NavigationPropertyName, rel.Entity1LogicalName
+      else
+        rel.Entity2NavigationPropertyName, rel.Entity1NavigationPropertyName, rel.Entity2LogicalName
     Map.tryFind otherLogical nameMap
     |> Option.map (fun eInfo ->
       let varType =
@@ -159,7 +161,7 @@ let getManyToManyVars (nameMap: Map<string, EntityInfo>) (forWrite: bool) (entit
       Variable.Create(
         navProp |> sanitizeNavProp,
         varType,
-        Comment.Create(eInfo.DisplayName, relType = RelType.ManyToMany, intersectTable = rel.IntersectEntityName),
+        Comment.Relationship(eInfo.DisplayName, relType = RelType.ManyToMany, partner = (partnerNavProp |> sanitizeNavProp), intersectTable = rel.IntersectEntityName),
         optional = true
       )))
   |> sortByName
@@ -195,7 +197,7 @@ let getLookupNameVars (attrs: XrmAttribute list) =
         Variable.Create(
           $"\"{valueInfix a.logicalName}@Microsoft.Dynamics.CRM.lookuplogicalname\"",
           unionType,
-          Comment.Create(a.displayName, ?tes = a.targetEntitySets),
+          Comment.Attribute(a.displayName, ?tes = a.targetEntitySets),
           optional = true
         )
       ))
@@ -245,8 +247,19 @@ type EntityInterfaces = {
   read: Interface
 }
 
-let getBlankEntityInterfaces (entity: XrmEntity) =
-  let comment = Comment.Create(entity.displayName, setName = entity.setName)
+let getIntersectEntities (nameMap: Map<string, EntityInfo>) (entity: XrmEntity) =
+  match entity.manyToManyRelationships with
+  | [] -> []
+  | rel :: _ ->
+    [ rel.Entity1LogicalName, rel.Entity1IntersectAttribute
+      rel.Entity2LogicalName, rel.Entity2IntersectAttribute ]
+    |> List.choose (fun (ln, attr) ->
+      Map.tryFind ln nameMap
+      |> Option.map (fun info -> ln, info.DisplayName, attr))
+
+let getBlankEntityInterfaces (nameMap: Map<string, EntityInfo>) (entity: XrmEntity) =
+  let intersectEntities = if entity.isIntersect then getIntersectEntities nameMap entity else []
+  let comment = Comment.Entity(entity.displayName, setName = entity.setName, isIntersect = entity.isIntersect, intersectEntities = intersectEntities, logicalName = entity.logicalName)
 
   let rScalars = "ReadableScalars"
   let cScalars = "CreatableScalars"
@@ -310,36 +323,9 @@ let getBlankEntityInterfaces (entity: XrmEntity) =
         [ rScalars; rRelations; frmt; lookupN; lookupV ] |> List.map (withNamespace $"{entity.schemaName}.{INTERNAL_NS}")
       ) }
         
-let getIntersectEntityInterfaceLines (entity: XrmEntity) =
-  let comment = Comment.Create(entity.displayName, setName = entity.setName)
-  let rScalars = "ReadableScalars"
-  let readableScalars =
-    Interface.Create(rScalars, vars = getScalarVars (fun a -> not a.createable) entity)
-  let read =
-    Interface.Create(
-      entity.schemaName,
-      comment,
-      [ $"{entity.schemaName}.{INTERNAL_NS}.{rScalars}" ],
-      vars = [ entityTag; entityId (entity, false) ]
-    )
-  Namespace.Create(
-    WEB_NS,
-    declare = true,
-    interfaces = [ read ],
-    namespaces =
-      [ Namespace.Create(
-          entity.schemaName,
-          namespaces = [ Namespace.Create(INTERNAL_NS, interfaces = [ readableScalars ]) ]
-        ) ]
-  )
-  |> CreateCommon.skipNsIfEmpty
-
 /// Create entity interfaces
 let getEntityInterfaceLines (nameMap: Map<string, EntityInfo>) (entity: XrmEntity) =
-  if entity.isIntersect then getIntersectEntityInterfaceLines entity
-  else
-
-  let entityInterfaces = getBlankEntityInterfaces entity
+  let entityInterfaces = getBlankEntityInterfaces nameMap entity
 
   let internalInterfaces =
     [

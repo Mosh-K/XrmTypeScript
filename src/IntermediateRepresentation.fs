@@ -90,8 +90,8 @@ type FormType =
 type CanBeNull = bool
 type QuickViewReference = string * System.Guid
 
-type XrmFormAttribute = string * Comment option * AttributeType * CanBeNull
-type XrmFormControl = string * Comment option * XrmFormAttribute option * ControlType * bool * CanBeNull
+type XrmFormAttribute = string * string list * AttributeType * CanBeNull
+type XrmFormControl = string * string list * XrmFormAttribute option * ControlType * bool * CanBeNull
 type XrmFormTab =
   { iname: string
     name: string

@@ -71,8 +71,8 @@ let getAttribute (enums:Map<string,TsType>) (entity: XrmEntity) (cField: Control
 
   let comment = 
     match attribute with
-    | None -> Comment.Create cField.displayName
-    | Some attr -> Comment.Create(attr.displayName, colType = attr.colType, ?tes = attr.targetEntitySets, link = getEnumLink entity.optionSets attr)
+    | None -> Comment.Basic cField.displayName
+    | Some attr -> Comment.Attribute(attr.displayName, colType = attr.colType, ?tes = attr.targetEntitySets, link = getEnumLink entity.optionSets attr)
 
   let attrType = getAttributeType attribute
 
@@ -120,7 +120,7 @@ let getAttribute (enums:Map<string,TsType>) (entity: XrmEntity) (cField: Control
                                             | TsType.Date       -> AttributeType.Date
                                             | _                 -> AttributeType.Default TsType.Any
 
-  Some (cField.dataFieldName, Some comment, aType, cField.canBeNull)
+  Some (cField.dataFieldName, comment, aType, cField.canBeNull)
 
 let getControl  (enums:Map<string,TsType>) (entity: XrmEntity) (cField:ControlField): XrmFormControl option =
   if cField.controlClass = ControlClassId.QuickView then None else
@@ -133,10 +133,10 @@ let getControl  (enums:Map<string,TsType>) (entity: XrmEntity) (cField:ControlFi
 
   let comment = 
     match attribute with
-    | None -> Comment.Create cField.displayName
+    | None -> Comment.Basic cField.displayName
     | Some attr ->
       let label = if cField.displayName.Trim() <> attr.displayName.Trim() then cField.displayName else ""
-      Comment.Create(attr.displayName, label = label, colType = attr.colType, ?tes = attr.targetEntitySets, link = getEnumLink entity.optionSets attr)
+      Comment.Attribute(attr.displayName, label = label, colType = attr.colType, ?tes = attr.targetEntitySets, link = getEnumLink entity.optionSets attr)
     
   let cType = 
     match cField.controlClass with
@@ -182,7 +182,7 @@ let getControl  (enums:Map<string,TsType>) (entity: XrmEntity) (cField:ControlFi
                 | Some (_, _, (AttributeType.MultiSelectOptionSet _), _)   -> ControlType.MultiSelectOptionSet
                 | _                                                     -> ControlType.Default
   
-  Some (cField.id, Some comment, formAttr, cType, cField.isBpf, cField.canBeNull)
+  Some (cField.id, comment, formAttr, cType, cField.isBpf, cField.canBeNull)
   
 let getValue (xEl:XElement) (str:string) =
   match xEl.Attribute(XName.Get(str)) with

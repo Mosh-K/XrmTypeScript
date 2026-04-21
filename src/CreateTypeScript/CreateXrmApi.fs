@@ -19,7 +19,7 @@ let getRetrieveFuncs (rawEntities: XrmEntity array) =
         Variable.Create("id", TsType.String)
         Variable.Create("options", TsType.String, optional = true) ],
       TsType.Generic("Async.PromiseLike", $"{WEB_NS}.{e.schemaName}"),
-      Comment.Create (e.displayName, setName = e.setName)
+      Comment.Entity(e.displayName, setName = e.setName)
     ))
 
 let getRetrieveMultipleFuncs (rawEntities: XrmEntity array) =
@@ -33,5 +33,5 @@ let getRetrieveMultipleFuncs (rawEntities: XrmEntity array) =
         Variable.Create("options", TsType.String, optional = true)
         Variable.Create("maxPageSize", TsType.Number, optional = true) ],
       TsType.Generic("Async.PromiseLike", $"RetrieveMultipleResult<{WEB_NS}.{e.schemaName}>"),
-      Comment.Create (e.displayName, setName = e.setName)
+      Comment.Entity(e.displayName, setName = e.setName)
     ))

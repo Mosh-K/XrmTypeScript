@@ -69,16 +69,12 @@ and varToString (v:Variable) =
     (someValueToString v.value)
 
 and varToIString (v:Variable) : list<string> =
-  let commentLines = 
-    match v.Comment with
-    | Some c -> c.ToCommentStrings()
-    | None -> []
   let varLine =
    sprintf "%s%s%s" 
     v.name 
     (if v.optional then "?" else "")
-    (someTypeToString v.varType) 
-  commentLines @ [ varLine ]
+    (someTypeToString v.varType)
+  v.comment @ [ varLine ]
 
 
 
@@ -116,12 +112,7 @@ let enumValToString ((k, v): string * int option) =
   | None    -> sprintf "%s," k
 
 let enumToString (e:TsEnum) =
-  let commentLines = 
-    match e.comment with
-    | Some c -> c.ToCommentStrings()
-    | None -> []
-
-  commentLines
+  e.comment
   @ [ (sprintf "%s%s%senum %s {"
       (if e.export then "export " else "")
       (if (not e.export) && e.declare then "declare " else "")
@@ -141,12 +132,7 @@ let funcToString (desc:bool) (f:Function) =
   @ [ "}" ]
       
 let funcToIString (desc:bool) (f:Function) =
-  let commentLines = 
-    match f.comment with
-    | Some c -> c.ToCommentStrings()
-    | None -> []
-
-  commentLines
+  f.comment
   @ [sprintf "%s%s(%s)%s" 
     (if desc then "function " else "") 
     f.name 
@@ -170,13 +156,8 @@ let classToString (c:Class) =
     )
   @ ["}"]
     
-let interfaceToString (i:Interface) =  
-  let commentLines = 
-    match i.comment with
-    | Some c -> c.ToCommentStrings()
-    | None -> []
-
-  commentLines
+let interfaceToString (i:Interface) =
+  i.comment
   @ [ (sprintf "%sinterface %s %s{"
       (exportTypeToString i.export)
       i.name 

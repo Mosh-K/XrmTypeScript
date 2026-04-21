@@ -12,7 +12,7 @@ let getOptionSetEnum (os:OptionSet) =
     os.options 
       |> Array.Parallel.map (fun o -> o.label, Some o.value) 
       |> List.ofArray,
-    Comment.Create os.displayName)],
+    Comment.Basic os.displayName)],
     declare = true)
   |> nsToString
 

@@ -3,7 +3,10 @@
 ## [Unreleased]
 ### Changed
 - WebEntities relationship variables are now split into typed `ManyToOne`, `OneToMany`, and `ManyToMany` sub-interfaces, directly mirroring the SDK metadata structure
-- Intersect (many-to-many junction) entities now generate simplified interfaces
+- Intersect (many-to-many junction) entities now generate full interfaces identical to regular entities, replacing the previous simplified read-only path
+- Intersect entity JSDoc now includes `Logical Name:`, an `Intersect Table` marker, and the two participating entities with their intersect attribute names
+- Relationship JSDoc comments now include a `Partner:` line with the counterpart navigation property name
+- `Comment` refactored into named factory methods (`Basic`, `Attribute`, `Relationship`, `Entity`, `Other`) that return `string list` directly, replacing the single `Comment.Create` / `ToCommentStrings()` approach
 - `Create` and `Update` interfaces restructured: bind variables are derived from raw SDK relationship metadata rather than the intermediate representation
 - Entity primary ID attribute promoted to a full `XrmAttribute`, carrying display name and column type metadata into generated JSDoc comments
 
