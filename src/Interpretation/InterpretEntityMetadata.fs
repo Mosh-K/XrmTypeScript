@@ -83,16 +83,6 @@ let interpretAttribute (nameMap: Map<string, EntityInfo>) labelMapping (a: Attri
     displayName = getLabel a.DisplayName
   }
 
-
-let resolveRelatedEntities (nameMap: Map<string, EntityInfo>) (logicalName: string) : EntityInfo list =
-  match Map.tryFind logicalName nameMap with
-  | Some eInfo when eInfo.EntitySetName = "owners" ->
-      let displayName k fallback = nameMap |> Map.tryFind k |> Option.map (fun e -> e.DisplayName) |> Option.defaultValue fallback
-      [ { SchemaName = "Team";       EntitySetName = "teams";       DisplayName = displayName "team"       "Team" }
-        { SchemaName = "SystemUser"; EntitySetName = "systemusers"; DisplayName = displayName "systemuser" "User" } ]
-  | Some eInfo -> [ eInfo ]
-  | None       -> []
-
 let interpretEntity (nameMap: Map<string, EntityInfo>) labelMapping (metadata:EntityMetadata) =
   if isNull metadata.Attributes then failwith "No attributes found!"
 

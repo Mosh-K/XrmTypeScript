@@ -9,7 +9,7 @@ type Comment =
     match lines with
     | [] -> []
     | [ line ] -> [ $"/** {line} */" ]
-    | _ -> [ "/**" ] @ (lines |> List.map (sprintf " * %s  ")) @ [ " */" ]
+    | _ -> [ "/**" ] @ (lines |> List.collect (fun l -> [ ""; l ]) |> List.tail |> List.map (sprintf " * %s  ")) @ [ " */" ]
 
   static member Entity(displayName, setName, ?logicalName, ?isIntersect, ?intersectEntities) =
     let logicalName = defaultArg logicalName ""
@@ -41,12 +41,14 @@ type Comment =
       if not (IsNullOrWhiteSpace link) then yield sprintf "{@link %s}" (link.Trim()) ]
     |> Comment.Wrap
 
-  static member Relationship(displayName, relType, partner, ?intersectTable) =
+  static member Relationship(displayName, relType, partner, ?intersectTable, ?notGeneratedEntity) =
     let intersectTable = defaultArg intersectTable ""
+    let notGeneratedEntity = defaultArg notGeneratedEntity ""
     [ if not (IsNullOrWhiteSpace displayName) then yield $"**{displayName.Trim()}**"
       yield $"Relationship Type: {relType}"
-      yield $"Partner: `{partner}`"
-      if not (IsNullOrWhiteSpace intersectTable) then yield $"Intersect Table: `{intersectTable.Trim()}`" ]
+      if not (IsNullOrWhiteSpace partner) then yield $"Partner: `{partner.Trim()}`"
+      if not (IsNullOrWhiteSpace intersectTable) then yield $"Intersect Table: `{intersectTable.Trim()}`"
+      if not (IsNullOrWhiteSpace notGeneratedEntity) then yield $"Entity `{notGeneratedEntity.Trim()}` not included in generation" ]
     |> Comment.Wrap
 
   static member Basic(displayName, ?link) =

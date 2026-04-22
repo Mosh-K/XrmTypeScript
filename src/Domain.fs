@@ -65,7 +65,7 @@ module XrmAttributeType =
     AttributeTypeDisplayName.FileType,                File ]
 
   let fromDisplayName t =
-    map |> List.tryFind (fst >> (=) t) |> Option.map snd |> Option.defaultValue Virtual
+    map |> List.find (fst >> (=) t) |> snd
 
 type Version = int * int * int * int
 type Intersect = string * Guid[]

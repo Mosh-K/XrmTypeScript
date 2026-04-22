@@ -1,15 +1,10 @@
 ﻿module internal DG.XrmTypeScript.CreateWebEntities
 
 open Microsoft.Xrm.Sdk.Metadata
-open Utility
 open Constants
 open InterpretCommon
 open IntermediateRepresentation
-open InterpretEntityMetadata
 
-
-let sanitizeNavProp (s: string) =
-  if s = null then "navigationPropertyNameNotDefined" else s
 
 let INTERNAL_NS = "_"
 
@@ -63,121 +58,152 @@ let getScalarType (attr: XrmAttribute) =
 (** Variable functions *)
 let getBindVars (nameMap: Map<string, EntityInfo>) (filter: XrmAttribute -> bool) (entity: XrmEntity) =
   let attrMap = entity.attributes |> List.map (fun a -> a.logicalName, a) |> Map.ofList
+
   entity.manyToOneRelationships
-  |> List.choose (fun rel ->
-    Map.tryFind rel.ReferencingAttribute attrMap
-    ?>> fun attr ->
-      (match filter attr with
-       | false -> None
-       | true ->
-         Some $"\"{rel.ReferencingEntityNavigationPropertyName |> sanitizeNavProp}@odata.bind\"")
-      ?>> fun name ->
-        let relatedInfo = resolveRelatedEntities nameMap rel.ReferencedEntity
-        match relatedInfo with
-        | [] -> None
-        | _  ->
-          let bindType =
-            relatedInfo
-            |> List.map (fun e -> TsType.Custom $"`/{e.EntitySetName}(${{string}})`")
-            |> TsType.Union
-          Some(Variable.Create(
-            name,
-            bindType,
-            Comment.Basic(relatedInfo |> List.map (fun e -> e.DisplayName) |> String.concat " | "),
-            optional = true
-          )))
+  |> List.filter (fun rel ->
+    not (isNull rel.ReferencingEntityNavigationPropertyName)
+    && Map.tryFind rel.ReferencingAttribute attrMap |> Option.exists filter)
+  |> List.map (fun rel ->
+    let eInfo = Map.find rel.ReferencedEntity nameMap
+
+    let bindType =
+      if eInfo.EntitySetName = "owners" then
+        TsType.Union [ TsType.Custom "`/teams(${string})`"; TsType.Custom "`/systemusers(${string})`" ]
+      else
+        TsType.Custom $"`/{eInfo.EntitySetName}(${{string}})`"
+
+    Variable.Create(
+      $"\"{rel.ReferencingEntityNavigationPropertyName}@odata.bind\"",
+      bindType,
+      Comment.Basic eInfo.DisplayName,
+      optional = true
+    ))
   |> sortByName
 
 let getLookupValueVars (attrs: XrmAttribute list) =
   attrs
-  |> List.choose (fun a ->
-    match a.specialType with
-    | SpecialType.EntityReference ->
-      Some(Variable.Create(
-        valueInfix a.logicalName,
-        TsType.String,
-        getAttributeComment a None,
-        optional = true
-      ))
-    | _ -> None)
+  |> List.filter (fun a -> a.specialType = SpecialType.EntityReference)
+  |> List.map (fun a ->
+    Variable.Create(
+      valueInfix a.logicalName,
+      TsType.String,
+      getAttributeComment a None,
+      optional = true
+    ))
   |> sortByName
 
 let private toInterfaceName forWrite schemaName =
   if forWrite then $"{schemaName}.{CREATE_INTERFACE_NAME}" else schemaName
 
-let getManyToOneVars (nameMap: Map<string, EntityInfo>) (forWrite: bool) (rels: OneToManyRelationshipMetadata list) =
+let getManyToOneVars nameMap (schemaNames: Set<string>) forWrite (rels: OneToManyRelationshipMetadata list) =
   rels
-  |> List.choose (fun rel ->
-    let relatedInfo = resolveRelatedEntities nameMap rel.ReferencedEntity
-    match relatedInfo with
-    | [] -> None
-    | _  ->
-      let varType =
+  |> List.filter (fun rel -> not (isNull rel.ReferencingEntityNavigationPropertyName))
+  |> List.map (fun rel ->
+    let eInfo = Map.find rel.ReferencedEntity nameMap
+
+    let relatedInfo =
+      if eInfo.EntitySetName = "owners" then
+        [ Map.find "team" nameMap; Map.find "systemuser" nameMap ]
+      else
+        [ eInfo ]
+
+    let unresolved =
+      relatedInfo
+      |> List.filter (fun e -> not (schemaNames.Contains e.SchemaName))
+
+    let varType =
+      if unresolved.IsEmpty then
         relatedInfo
         |> List.map (fun e -> TsType.Custom(toInterfaceName forWrite e.SchemaName))
         |> fun tys -> TsType.Union(tys @ [ TsType.Null ])
-      Some(Variable.Create(
-        rel.ReferencingEntityNavigationPropertyName |> sanitizeNavProp,
-        varType,
-        Comment.Relationship(relatedInfo |> List.map (fun e -> e.DisplayName) |> String.concat " | ", relType = RelType.ManyToOne, partner = (rel.ReferencedEntityNavigationPropertyName |> sanitizeNavProp)),
-        optional = true
-      )))
+      else
+        TsType.Any
+
+    Variable.Create(
+      rel.ReferencingEntityNavigationPropertyName,
+      varType,
+      Comment.Relationship(
+        eInfo.DisplayName,
+        relType = RelType.ManyToOne,
+        partner = rel.ReferencedEntityNavigationPropertyName,
+        notGeneratedEntity = (unresolved |> List.map (fun e -> e.DisplayName) |> String.concat " | ")
+      ),
+      optional = true
+    ))
   |> sortByName
 
-let getOneToManyVars (nameMap: Map<string, EntityInfo>) (forWrite: bool) (rels: OneToManyRelationshipMetadata list) =
+let getOneToManyVars nameMap (schemaNames: Set<string>) forWrite (rels: OneToManyRelationshipMetadata list) =
   rels
-  |> List.choose (fun rel ->
-    Map.tryFind rel.ReferencingEntity nameMap
-    |> Option.map (fun eInfo ->
-      let varType =
-        TsType.Union
-          [ TsType.Array(TsType.Custom(toInterfaceName forWrite eInfo.SchemaName))
-            TsType.Null ]
-      Variable.Create(
-        rel.ReferencedEntityNavigationPropertyName |> sanitizeNavProp,
-        varType,
-        Comment.Relationship(eInfo.DisplayName, relType = RelType.OneToMany, partner = (rel.ReferencingEntityNavigationPropertyName |> sanitizeNavProp)),
-        optional = true
-      )))
+  |> List.filter (fun rel -> not (isNull rel.ReferencedEntityNavigationPropertyName))
+  |> List.map (fun rel ->
+    let eInfo = Map.find rel.ReferencingEntity nameMap
+    let inGeneration = schemaNames.Contains eInfo.SchemaName
+
+    let varType =
+      if inGeneration then
+        TsType.Union [ TsType.Array(TsType.Custom(toInterfaceName forWrite eInfo.SchemaName)); TsType.Null ]
+      else
+        TsType.Any
+
+    Variable.Create(
+      rel.ReferencedEntityNavigationPropertyName,
+      varType,
+      Comment.Relationship(
+        eInfo.DisplayName,
+        relType = RelType.OneToMany,
+        partner = rel.ReferencingEntityNavigationPropertyName,
+        notGeneratedEntity = (if inGeneration then "" else rel.ReferencingEntity)
+      ),
+      optional = true
+    ))
   |> sortByName
 
-let getManyToManyVars (nameMap: Map<string, EntityInfo>) (forWrite: bool) (entity: XrmEntity) =
+let getManyToManyVars nameMap (schemaNames: Set<string>) forWrite (entity: XrmEntity) =
   entity.manyToManyRelationships
-  |> List.choose (fun rel ->
-    // True for an intersect's entity single ManyToOne relationship, false for regular ManyToMany relationships
-    if entity.logicalName <> rel.Entity1LogicalName && entity.logicalName <> rel.Entity2LogicalName then None
-    else
+  |> List.filter (fun rel ->
+    (entity.logicalName = rel.Entity1LogicalName || entity.logicalName = rel.Entity2LogicalName) // Filter intersect tables
+    && not (isNull rel.Entity1NavigationPropertyName)
+    && not (isNull rel.Entity2NavigationPropertyName))
+  |> List.map (fun rel ->
     let navProp, partnerNavProp, otherLogical =
       if entity.logicalName = rel.Entity2LogicalName then
         rel.Entity1NavigationPropertyName, rel.Entity2NavigationPropertyName, rel.Entity1LogicalName
       else
         rel.Entity2NavigationPropertyName, rel.Entity1NavigationPropertyName, rel.Entity2LogicalName
-    Map.tryFind otherLogical nameMap
-    |> Option.map (fun eInfo ->
-      let varType =
-        TsType.Union
-          [ TsType.Array(TsType.Custom(toInterfaceName forWrite eInfo.SchemaName))
-            TsType.Null ]
-      Variable.Create(
-        navProp |> sanitizeNavProp,
-        varType,
-        Comment.Relationship(eInfo.DisplayName, relType = RelType.ManyToMany, partner = (partnerNavProp |> sanitizeNavProp), intersectTable = rel.IntersectEntityName),
-        optional = true
-      )))
+
+    let eInfo = Map.find otherLogical nameMap
+    let inGeneration = schemaNames.Contains eInfo.SchemaName
+
+    let varType =
+      if inGeneration then
+        TsType.Union [ TsType.Array(TsType.Custom(toInterfaceName forWrite eInfo.SchemaName)); TsType.Null ]
+      else
+        TsType.Any
+
+    Variable.Create(
+      navProp,
+      varType,
+      Comment.Relationship(
+        eInfo.DisplayName,
+        relType = RelType.ManyToMany,
+        partner = partnerNavProp,
+        intersectTable = rel.IntersectEntityName,
+        notGeneratedEntity = (if inGeneration then "" else otherLogical)
+      ),
+      optional = true
+    ))
   |> sortByName
 
 let getFormattedVars (entity: XrmEntity) =
   entity.attributes
-  |> List.choose (fun attr ->
-    match hasFormattedValue attr with
-    | true ->
-      Some(Variable.Create(
-        formattedName attr,
-        TsType.String,
-        getAttributeComment attr (Some entity.optionSets),
-        optional = true
-      ))
-    | false -> None)
+  |> List.filter hasFormattedValue
+  |> List.map (fun attr ->
+    Variable.Create(
+      formattedName attr,
+      TsType.String,
+      getAttributeComment attr (Some entity.optionSets),
+      optional = true
+    ))
   |> sortByName
 
 let getLookupNameVars (attrs: XrmAttribute list) =
@@ -205,18 +231,17 @@ let getLookupNameVars (attrs: XrmAttribute list) =
 
 let getScalarVars (filter: XrmAttribute -> bool) (entity: XrmEntity) =
   entity.attributes
-  |> List.choose (fun attr ->
-    match attr.specialType with
-    | SpecialType.EntityReference -> None
-    | _ when attr.logicalName = entity.idAttribute.logicalName -> None
-    | _ when not (filter attr) -> None
-    | _ ->
-      Some(Variable.Create(
-        attr.logicalName,
-        TsType.Union [ getScalarType attr; TsType.Null ],
-        getAttributeComment attr (Some entity.optionSets),
-        optional = true
-      )))
+  |> List.filter (fun attr ->
+    attr.specialType <> SpecialType.EntityReference
+    && attr.logicalName <> entity.idAttribute.logicalName
+    && filter attr)
+  |> List.map (fun attr ->
+    Variable.Create(
+      attr.logicalName,
+      TsType.Union [ getScalarType attr; TsType.Null ],
+      getAttributeComment attr (Some entity.optionSets),
+      optional = true
+    ))
   |> sortByName
 
 (** Code creation methods *)
@@ -248,18 +273,26 @@ type EntityInterfaces = {
 }
 
 let getIntersectEntities (nameMap: Map<string, EntityInfo>) (entity: XrmEntity) =
-  match entity.manyToManyRelationships with
-  | [] -> []
-  | rel :: _ ->
-    [ rel.Entity1LogicalName, rel.Entity1IntersectAttribute
-      rel.Entity2LogicalName, rel.Entity2IntersectAttribute ]
-    |> List.choose (fun (ln, attr) ->
-      Map.tryFind ln nameMap
-      |> Option.map (fun info -> ln, info.DisplayName, attr))
+  if not entity.isIntersect then []
+  else
+    match entity.manyToManyRelationships with
+    | [] -> []
+    | rel :: _ ->
+      [ rel.Entity1LogicalName, rel.Entity1IntersectAttribute
+        rel.Entity2LogicalName, rel.Entity2IntersectAttribute ]
+      |> List.map (fun (ln, attr) ->
+        let eInfo = Map.find ln nameMap
+        ln, eInfo.DisplayName, attr)
 
 let getBlankEntityInterfaces (nameMap: Map<string, EntityInfo>) (entity: XrmEntity) =
-  let intersectEntities = if entity.isIntersect then getIntersectEntities nameMap entity else []
-  let comment = Comment.Entity(entity.displayName, setName = entity.setName, isIntersect = entity.isIntersect, intersectEntities = intersectEntities, logicalName = entity.logicalName)
+  let comment =
+    Comment.Entity(
+      entity.displayName,
+      setName = entity.setName,
+      isIntersect = entity.isIntersect,
+      intersectEntities = getIntersectEntities nameMap entity,
+      logicalName = entity.logicalName
+    )
 
   let rScalars = "ReadableScalars"
   let cScalars = "CreatableScalars"
@@ -324,7 +357,7 @@ let getBlankEntityInterfaces (nameMap: Map<string, EntityInfo>) (entity: XrmEnti
       ) }
         
 /// Create entity interfaces
-let getEntityInterfaceLines (nameMap: Map<string, EntityInfo>) (entity: XrmEntity) =
+let getEntityInterfaceLines nameMap (schemaNames: Set<string>) (entity: XrmEntity) =
   let entityInterfaces = getBlankEntityInterfaces nameMap entity
 
   let internalInterfaces =
@@ -334,14 +367,14 @@ let getEntityInterfaceLines (nameMap: Map<string, EntityInfo>) (entity: XrmEntit
       { entityInterfaces.updatableScalars with vars = getScalarVars (fun a -> a.updateable) entity }
 
       entityInterfaces.readRelationships
-      { entityInterfaces.readManyToOne with vars = getManyToOneVars nameMap false entity.manyToOneRelationships }
-      { entityInterfaces.readOneToMany with vars = getOneToManyVars nameMap false entity.oneToManyRelationships }
-      { entityInterfaces.readManyToMany with vars = getManyToManyVars nameMap false entity }
+      { entityInterfaces.readManyToOne with vars = getManyToOneVars nameMap schemaNames false entity.manyToOneRelationships }
+      { entityInterfaces.readOneToMany with vars = getOneToManyVars nameMap schemaNames false entity.oneToManyRelationships }
+      { entityInterfaces.readManyToMany with vars = getManyToManyVars nameMap schemaNames false entity }
 
       entityInterfaces.writeRelationships
-      { entityInterfaces.writeManyToOne with vars = getManyToOneVars nameMap true entity.manyToOneRelationships }
-      { entityInterfaces.writeOneToMany with vars =  getOneToManyVars nameMap true entity.oneToManyRelationships }
-      { entityInterfaces.writeManyToMany with vars = getManyToManyVars nameMap true entity }
+      { entityInterfaces.writeManyToOne with vars = getManyToOneVars nameMap schemaNames true entity.manyToOneRelationships }
+      { entityInterfaces.writeOneToMany with vars =  getOneToManyVars nameMap schemaNames true entity.oneToManyRelationships }
+      { entityInterfaces.writeManyToMany with vars = getManyToManyVars nameMap schemaNames true entity }
 
       { entityInterfaces.creatableBinds with vars = getBindVars nameMap (fun a -> a.createable && not a.updateable) entity }
       { entityInterfaces.updatableBinds with vars = getBindVars nameMap (fun a -> a.updateable) entity }

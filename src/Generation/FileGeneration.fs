@@ -63,11 +63,12 @@ let generateEnumDefs state =
 /// Generate the web entity definitions
 let generateWebEntityDefs state =
   printf "Generating Web entity definitions..."
+  let schemaNames = state.entities |> Array.map (fun e -> e.schemaName) |> Set.ofArray
   let defs = 
     state.entities
     |> Array.Parallel.map (fun (e) ->
       let name = e.logicalName
-      let lines = getEntityInterfaceLines state.nameMap e
+      let lines = getEntityInterfaceLines state.nameMap schemaNames e
 
       sprintf "%s/Web/%s.d.ts" state.outputDir name, 
       lines)

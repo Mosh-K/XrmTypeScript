@@ -8,6 +8,7 @@
 - Relationship JSDoc comments now include a `Partner:` line with the counterpart navigation property name
 - `Comment` refactored into named factory methods (`Basic`, `Attribute`, `Relationship`, `Entity`, `Other`) that return `string list` directly, replacing the single `Comment.Create` / `ToCommentStrings()` approach
 - `Create` and `Update` interfaces restructured: bind variables are derived from raw SDK relationship metadata rather than the intermediate representation
+- Relationship variables for entities not included in generation now emit `any` instead of being silently omitted, with a JSDoc note identifying the missing entity
 - Entity primary ID attribute promoted to a full `XrmAttribute`, carrying display name and column type metadata into generated JSDoc comments
 
 ## [1.3.0] - 2026-04-15
