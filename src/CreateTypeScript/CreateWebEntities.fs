@@ -126,7 +126,7 @@ let getManyToOneVars nameMap (schemaNames: Set<string>) forWrite (rels: OneToMan
         eInfo.DisplayName,
         relType = RelType.ManyToOne,
         partner = rel.ReferencedEntityNavigationPropertyName,
-        notGeneratedEntity = (unresolved |> List.map (fun e -> e.DisplayName) |> String.concat " | ")
+        relatedEntity = rel.ReferencedEntity
       ),
       optional = true
     ))
@@ -152,7 +152,7 @@ let getOneToManyVars nameMap (schemaNames: Set<string>) forWrite (rels: OneToMan
         eInfo.DisplayName,
         relType = RelType.OneToMany,
         partner = rel.ReferencingEntityNavigationPropertyName,
-        notGeneratedEntity = (if inGeneration then "" else rel.ReferencingEntity)
+        relatedEntity = rel.ReferencingEntity
       ),
       optional = true
     ))
@@ -167,9 +167,9 @@ let getManyToManyVars nameMap (schemaNames: Set<string>) forWrite (entity: XrmEn
   |> List.map (fun rel ->
     let navProp, partnerNavProp, otherLogical =
       if entity.logicalName = rel.Entity2LogicalName then
-        rel.Entity1NavigationPropertyName, rel.Entity2NavigationPropertyName, rel.Entity1LogicalName
+        rel.Entity2NavigationPropertyName, rel.Entity1NavigationPropertyName, rel.Entity1LogicalName
       else
-        rel.Entity2NavigationPropertyName, rel.Entity1NavigationPropertyName, rel.Entity2LogicalName
+        rel.Entity1NavigationPropertyName, rel.Entity2NavigationPropertyName, rel.Entity2LogicalName
 
     let eInfo = Map.find otherLogical nameMap
     let inGeneration = schemaNames.Contains eInfo.SchemaName
@@ -187,8 +187,8 @@ let getManyToManyVars nameMap (schemaNames: Set<string>) forWrite (entity: XrmEn
         eInfo.DisplayName,
         relType = RelType.ManyToMany,
         partner = partnerNavProp,
-        intersectTable = rel.IntersectEntityName,
-        notGeneratedEntity = (if inGeneration then "" else otherLogical)
+        relatedEntity = otherLogical,
+        intersectTable = rel.IntersectEntityName
       ),
       optional = true
     ))
@@ -278,11 +278,10 @@ let getIntersectEntities (nameMap: Map<string, EntityInfo>) (entity: XrmEntity) 
     match entity.manyToManyRelationships with
     | [] -> []
     | rel :: _ ->
-      [ rel.Entity1LogicalName, rel.Entity1IntersectAttribute
-        rel.Entity2LogicalName, rel.Entity2IntersectAttribute ]
-      |> List.map (fun (ln, attr) ->
+      [ rel.Entity1LogicalName; rel.Entity2LogicalName ]
+      |> List.map (fun ln ->
         let eInfo = Map.find ln nameMap
-        ln, eInfo.DisplayName, attr)
+        ln, eInfo.DisplayName)
 
 let getBlankEntityInterfaces (nameMap: Map<string, EntityInfo>) (entity: XrmEntity) =
   let comment =

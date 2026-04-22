@@ -20,7 +20,7 @@ type Comment =
       if not (IsNullOrWhiteSpace setName) then yield $"Set Name: `{setName.Trim()}`"
       if defaultArg isIntersect false then yield "Intersect Table"
       match intersectEntities with
-      | (ln1, dn1, attr1) :: (ln2, dn2, attr2) :: _ -> yield $"Intersects: {dn1} (`{ln1}`, `{attr1}`) ⟷ {dn2} (`{ln2}`, `{attr2}`)"
+      | (ln1, dn1) :: (ln2, dn2) :: _ -> yield $"Intersects: {dn1} (`{ln1}`) ⟷ {dn2} (`{ln2}`)"
       | _ -> () ]
     |> Comment.Wrap
 
@@ -41,14 +41,12 @@ type Comment =
       if not (IsNullOrWhiteSpace link) then yield sprintf "{@link %s}" (link.Trim()) ]
     |> Comment.Wrap
 
-  static member Relationship(displayName, relType, partner, ?intersectTable, ?notGeneratedEntity) =
+  static member Relationship(displayName: string, relType, partner: string, relatedEntity: string, ?intersectTable) =
     let intersectTable = defaultArg intersectTable ""
-    let notGeneratedEntity = defaultArg notGeneratedEntity ""
-    [ if not (IsNullOrWhiteSpace displayName) then yield $"**{displayName.Trim()}**"
-      yield $"Relationship Type: {relType}"
-      if not (IsNullOrWhiteSpace partner) then yield $"Partner: `{partner.Trim()}`"
-      if not (IsNullOrWhiteSpace intersectTable) then yield $"Intersect Table: `{intersectTable.Trim()}`"
-      if not (IsNullOrWhiteSpace notGeneratedEntity) then yield $"Entity `{notGeneratedEntity.Trim()}` not included in generation" ]
+    [ yield $"Relationship Type: {relType}"
+      if not (IsNullOrWhiteSpace relatedEntity) then yield $"Related entity: {displayName.Trim()} (`{relatedEntity.Trim()}`)"
+      if not (IsNullOrWhiteSpace partner) then yield $"Partner navigation property: `{partner.Trim()}`"
+      if not (IsNullOrWhiteSpace intersectTable) then yield $"Intersect table: `{intersectTable.Trim()}`" ]
     |> Comment.Wrap
 
   static member Basic(displayName, ?link) =
