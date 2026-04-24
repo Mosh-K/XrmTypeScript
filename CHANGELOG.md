@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 ### Changed
+- WebEntities internal interfaces reorganized into sub-namespaces under `_`: `Scalars`, `Read`, `Write`, `Binds`, and `Lookup`, replacing the previous flat layout
+- Lookup value properties (`_*_value`) now include the lookup field's logical name in their JSDoc comment
 - WebEntities relationship variables are now split into typed `ManyToOne`, `OneToMany`, and `ManyToMany` sub-interfaces, directly mirroring the SDK metadata structure
 - Intersect (many-to-many junction) entities now generate full interfaces identical to regular entities, replacing the previous simplified read-only path
 - Intersect entity JSDoc now includes `Logical Name:`, an `Intersect Table` marker, and the two participating entities

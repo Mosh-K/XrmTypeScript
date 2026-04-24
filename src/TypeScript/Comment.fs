@@ -24,14 +24,16 @@ type Comment =
       | _ -> () ]
     |> Comment.Wrap
 
-  static member Attribute(displayName, ?colType, ?tes, ?link, ?label, ?isPrimaryId) =
+  static member Attribute(displayName, ?colType, ?tes, ?link, ?label, ?isPrimaryId, ?logicalName) =
+    let logicalName = defaultArg logicalName ""
     let tes = Option.defaultValue [||] tes
     let link = defaultArg link ""
     let label = defaultArg label ""
-    
+
     [ if not (IsNullOrWhiteSpace displayName) then yield $"**{displayName.Trim()}**"
       if defaultArg isPrimaryId false then yield "Primary ID"
       match colType with Some t -> yield $"Column Type: {t}" | None -> ()
+      if not (IsNullOrWhiteSpace logicalName) then yield $"Lookup Field: `{logicalName.Trim()}`"
       if tes.Length > 0 then
         let maxDisplay = 5
         let shown = tes |> Array.truncate maxDisplay |> Array.map (fun (ln, _, dn) -> $"{dn} (`{ln}`)") |> String.concat " | "

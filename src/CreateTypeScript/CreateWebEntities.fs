@@ -7,10 +7,13 @@ open IntermediateRepresentation
 
 
 let INTERNAL_NS = "_"
+let SCALAR_NS = "Scalars"
+let READ_NS = "Read"
+let WRITE_NS = "Write"
+let BINDS_NS = "Binds"
+let LOOKUP_NS = "Lookup"
 
 (** Interface name helper functions *)
-let withNamespace (ns: string) (str: string) = $"{ns}.{str}"
-
 let entityTag = 
   Variable.Create("\"@odata.etag\"", TsType.String)
 
@@ -48,7 +51,19 @@ let getAttributeComment (attr: XrmAttribute) (options: OptionSet list option) =
     match options with
     | Some opts -> getEnumLink opts attr
     | None -> ""
-  Comment.Attribute(attr.displayName, colType = attr.colType, ?tes = attr.targetEntitySets, link = link)
+
+  let logicalName =
+    match attr.specialType with
+    | SpecialType.EntityReference -> attr.logicalName
+    | _ -> ""
+
+  Comment.Attribute(
+    attr.displayName,
+    colType = attr.colType,
+    ?tes = attr.targetEntitySets,
+    link = link,
+    logicalName = logicalName
+  )
 
 let getScalarType (attr: XrmAttribute) =
   match attr.specialType with
@@ -293,41 +308,36 @@ let getBlankEntityInterfaces (nameMap: Map<string, EntityInfo>) (entity: XrmEnti
       logicalName = entity.logicalName
     )
 
-  let rScalars = "ReadableScalars"
-  let cScalars = "CreatableScalars"
-  let uScalars = "UpdatableScalars"
+  let rScalars = "Readable"
+  let cScalars = "Creatable"
+  let uScalars = "Updatable"
 
-  let cBinds = "CreatableBinds"
-  let uBinds = "UpdatableBinds"
+  let cBinds = "Creatable"
+  let uBinds = "Updatable"
 
-  let wRelations = "WriteRelationships"
-  let wM2O = "WriteManyToOne"
-  let wO2M = "WriteOneToMany"
-  let wM2M = "WriteManyToMany"
-
-  let rRelations = "ReadRelationships"
-  let rM2O = "ReadManyToOne"
-  let rO2M = "ReadOneToMany"
-  let rM2M = "ReadManyToMany"
+  let relations = "Relationships"
+  let m2o = "ManyToOne"
+  let o2m = "OneToMany"
+  let m2m = "ManyToMany"
 
   let frmt = "Formatted"
-  let lookupN = "LookupNames"
-  let lookupV = "LookupValues"
+  let lookupN = "LogicalNames"
+  let lookupV = "Values"
 
   {
     readableScalars = Interface.Create(rScalars, extends = [ cScalars ])
     creatableScalars = Interface.Create(cScalars, extends = [ uScalars ])
     updatableScalars = Interface.Create uScalars
 
-    readRelationships = Interface.Create(rRelations, extends = [ rM2O; rO2M; rM2M ])
-    readManyToOne = Interface.Create rM2O
-    readOneToMany = Interface.Create rO2M
-    readManyToMany = Interface.Create rM2M
+    readRelationships = Interface.Create(relations, extends = [ m2o; o2m; m2m ])
+    readManyToOne = Interface.Create m2o
+    readOneToMany = Interface.Create o2m
+    readManyToMany = Interface.Create m2m
 
-    writeRelationships = Interface.Create(wRelations, extends = [ wM2O; wO2M; wM2M ])
-    writeManyToOne = Interface.Create wM2O
-    writeOneToMany = Interface.Create wO2M
-    writeManyToMany = Interface.Create wM2M
+    writeRelationships = Interface.Create(relations, extends = [ m2o; o2m; m2m ])
+    writeManyToOne = Interface.Create m2o
+    writeOneToMany = Interface.Create o2m
+    writeManyToMany = Interface.Create m2m
 
     creatableBinds = Interface.Create(cBinds, extends = [ uBinds ])
     updatableBinds = Interface.Create uBinds
@@ -340,47 +350,75 @@ let getBlankEntityInterfaces (nameMap: Map<string, EntityInfo>) (entity: XrmEnti
       Interface.Create(
         UPDATE_INTERFACE_NAME,
         comment,
-        [ uScalars; wRelations; uBinds ] |> List.map (withNamespace INTERNAL_NS)
+        [
+          $"{INTERNAL_NS}.{SCALAR_NS}.{uScalars}"
+          $"{INTERNAL_NS}.{WRITE_NS}.{relations}"
+          $"{INTERNAL_NS}.{BINDS_NS}.{uBinds}" ]
       )
     create =
       Interface.Create(
         CREATE_INTERFACE_NAME,
         comment,
-        [ cScalars; wRelations; cBinds ] |> List.map (withNamespace INTERNAL_NS)
+        [
+          $"{INTERNAL_NS}.{SCALAR_NS}.{cScalars}"
+          $"{INTERNAL_NS}.{WRITE_NS}.{relations}"
+          $"{INTERNAL_NS}.{BINDS_NS}.{cBinds}" ]
       )
     read =
       Interface.Create(
         entity.schemaName,
         comment,
-        [ rScalars; rRelations; frmt; lookupN; lookupV ] |> List.map (withNamespace $"{entity.schemaName}.{INTERNAL_NS}")
-      ) }
+        [ 
+          $"{entity.schemaName}.{INTERNAL_NS}.{SCALAR_NS}.{rScalars}"
+          $"{entity.schemaName}.{INTERNAL_NS}.{READ_NS}.{relations}"
+          $"{entity.schemaName}.{INTERNAL_NS}.{frmt}"
+          $"{entity.schemaName}.{INTERNAL_NS}.{LOOKUP_NS}.{lookupN}"
+          $"{entity.schemaName}.{INTERNAL_NS}.{LOOKUP_NS}.{lookupV}" ]
+      ) 
+  }
         
 /// Create entity interfaces
 let getEntityInterfaceLines nameMap (schemaNames: Set<string>) (entity: XrmEntity) =
   let entityInterfaces = getBlankEntityInterfaces nameMap entity
 
-  let internalInterfaces =
+  let scalarInterfaces =
     [
       { entityInterfaces.readableScalars with vars = getScalarVars (fun a -> not a.createable) entity }
       { entityInterfaces.creatableScalars with vars = getScalarVars (fun a -> a.createable && not a.updateable) entity }
       { entityInterfaces.updatableScalars with vars = getScalarVars (fun a -> a.updateable) entity }
+    ]
 
+  let readInterfaces =
+    [
       entityInterfaces.readRelationships
       { entityInterfaces.readManyToOne with vars = getManyToOneVars nameMap schemaNames false entity.manyToOneRelationships }
       { entityInterfaces.readOneToMany with vars = getOneToManyVars nameMap schemaNames false entity.oneToManyRelationships }
       { entityInterfaces.readManyToMany with vars = getManyToManyVars nameMap schemaNames false entity }
+    ]
 
+  let writeInterfaces =
+    [
       entityInterfaces.writeRelationships
       { entityInterfaces.writeManyToOne with vars = getManyToOneVars nameMap schemaNames true entity.manyToOneRelationships }
-      { entityInterfaces.writeOneToMany with vars =  getOneToManyVars nameMap schemaNames true entity.oneToManyRelationships }
+      { entityInterfaces.writeOneToMany with vars = getOneToManyVars nameMap schemaNames true entity.oneToManyRelationships }
       { entityInterfaces.writeManyToMany with vars = getManyToManyVars nameMap schemaNames true entity }
+    ]
 
+  let bindInterfaces =
+    [
       { entityInterfaces.creatableBinds with vars = getBindVars nameMap (fun a -> a.createable && not a.updateable) entity }
       { entityInterfaces.updatableBinds with vars = getBindVars nameMap (fun a -> a.updateable) entity }
+    ]
 
+  let lookupInterfaces =
+    [
+      { entityInterfaces.lookupValues with vars = getLookupValueVars entity.attributes }
+      { entityInterfaces.lookupNames with vars = getLookupNameVars entity.attributes }
+    ]
+
+  let internalInterfaces =
+    [
       { entityInterfaces.formatted with vars = getFormattedVars entity }
-      { entityInterfaces.lookupNames with vars = getLookupNameVars entity.attributes } 
-      { entityInterfaces.lookupValues with vars = getLookupValueVars entity.attributes } 
     ]
 
   let update = { entityInterfaces.update with vars = [ entityId (entity, true) ] }
@@ -395,7 +433,17 @@ let getEntityInterfaceLines nameMap (schemaNames: Set<string>) (entity: XrmEntit
       [ Namespace.Create(
           entity.schemaName,
           interfaces = [ create; update ],
-          namespaces = [ Namespace.Create(INTERNAL_NS, interfaces = internalInterfaces) ]
+          namespaces =
+            [ Namespace.Create(
+                INTERNAL_NS,
+                interfaces = internalInterfaces,
+                namespaces =
+                  [ Namespace.Create(SCALAR_NS, interfaces = scalarInterfaces)
+                    Namespace.Create(READ_NS, interfaces = readInterfaces)
+                    Namespace.Create(WRITE_NS, interfaces = writeInterfaces)
+                    Namespace.Create(BINDS_NS, interfaces = bindInterfaces)
+                    Namespace.Create(LOOKUP_NS, interfaces = lookupInterfaces) ]
+              ) ]
         ) ]
   )
   |> CreateCommon.skipNsIfEmpty
