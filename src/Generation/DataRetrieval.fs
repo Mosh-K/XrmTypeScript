@@ -16,20 +16,19 @@ let connectToCrm xrmAuth =
   proxy
 
 // Retrieve CRM entity name map
-let retrieveEntityNameMap mainProxy =
+let retrieveEntitiesInfo mainProxy =
   printf "Fetching entity names from CRM..."
 
-  let map =
+  let arr =
     getAllEntityMetadataLight mainProxy
     |> Array.Parallel.map (fun m ->
-      m.LogicalName,
-      { SchemaName = m.SchemaName
+      { LogicalName = m.LogicalName
+        SchemaName = m.SchemaName
         EntitySetName = m.EntitySetName
         DisplayName = getLabel m.DisplayName })
-    |> Map.ofArray
 
   printfn "Done!"
-  map
+  arr
 
 // Retrieve CRM entity metadata
 let retrieveEntityMetadata entities (mainProxy:IOrganizationService) =
@@ -57,8 +56,8 @@ let retrieveCrmVersion mainProxy =
 
 /// Retrieve all the necessary CRM data
 let retrieveCrmData crmVersion entities (mainProxy:IOrganizationService) skipInactiveForms =
-  let nameMap = 
-    retrieveEntityNameMap mainProxy
+  let entitiesInfo =
+    retrieveEntitiesInfo mainProxy
 
   let rawEntityMetadata = 
     retrieveEntityMetadata entities mainProxy
@@ -84,7 +83,7 @@ let retrieveCrmData crmVersion entities (mainProxy:IOrganizationService) skipIna
 
   { 
     RawState.metadata = rawEntityMetadata
-    nameMap = nameMap
+    info = entitiesInfo
     bpfData = bpfData
     formData = formData 
     crmVersion = crmVersion

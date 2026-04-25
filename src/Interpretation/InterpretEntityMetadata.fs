@@ -57,16 +57,9 @@ let interpretAttribute (nameMap: Map<string, EntityInfo>) labelMapping (a: Attri
 
   let targetEntitySets =
     match a with
-    | :? LookupAttributeMetadata as lam -> 
-      lam.Targets
-      |> Array.choose 
-        (fun k -> 
-          match Map.tryFind k nameMap with
-          | None -> None
-          | Some tes -> Some (k, tes.EntitySetName, tes.DisplayName)
-        )
-      |> Some
-    | _ -> None
+    | :? LookupAttributeMetadata as lam ->
+      lam.Targets |> Array.map (fun k -> Map.find k nameMap)
+    | _ -> [||]
 
   let vType, sType = interpretNormalAttribute aType options
     

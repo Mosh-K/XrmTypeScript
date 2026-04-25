@@ -71,8 +71,10 @@ let intersectForms formDict formsToIntersect =
 let interpretCrmData (gSettings: XdtGenerationSettings) (rawState: RawState) =
   printf "Interpreting data..."
 
+  let nameMap = rawState.info |> Array.map (fun e -> e.LogicalName, e) |> Map.ofArray
+
   let entityMetadata =
-    rawState.metadata |> Array.Parallel.map (interpretEntity rawState.nameMap gSettings.labelMapping)
+    rawState.metadata |> Array.Parallel.map (interpretEntity nameMap gSettings.labelMapping)
 
   let bpfControls = interpretBpfs rawState.bpfData
 
@@ -84,5 +86,5 @@ let interpretCrmData (gSettings: XdtGenerationSettings) (rawState: RawState) =
     bpfControls = bpfControls
     forms = forms
     outputDir = gSettings.out
-    nameMap = rawState.nameMap
+    nameMap = nameMap
   }

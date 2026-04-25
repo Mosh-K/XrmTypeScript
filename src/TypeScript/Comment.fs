@@ -20,7 +20,7 @@ type Comment =
       if not (IsNullOrWhiteSpace setName) then yield $"Set Name: `{setName.Trim()}`"
       if defaultArg isIntersect false then yield "Intersect Table"
       match intersectEntities with
-      | (ln1, dn1) :: (ln2, dn2) :: _ -> yield $"Intersects: {dn1} (`{ln1}`) ⟷ {dn2} (`{ln2}`)"
+      | e1 :: e2 :: _ -> yield $"Intersects: {e1.DisplayName} (`{e1.LogicalName}`) ⟷ {e2.DisplayName} (`{e2.LogicalName}`)"
       | _ -> () ]
     |> Comment.Wrap
 
@@ -36,7 +36,7 @@ type Comment =
       if not (IsNullOrWhiteSpace logicalName) then yield $"Lookup Field: `{logicalName.Trim()}`"
       if tes.Length > 0 then
         let maxDisplay = 5
-        let shown = tes |> Array.truncate maxDisplay |> Array.map (fun (ln, _, dn) -> $"{dn} (`{ln}`)") |> String.concat " | "
+        let shown = tes |> Array.truncate maxDisplay |> Array.map (fun e -> $"{e.DisplayName} (`{e.LogicalName}`)") |> String.concat " | "
         let formatted = if tes.Length <= maxDisplay then shown else $"{shown} | +{tes.Length - maxDisplay} more"
         yield $"Table: {formatted}"
       if not (IsNullOrWhiteSpace label) then yield $"Label: {label.Trim()}"

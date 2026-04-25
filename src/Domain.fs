@@ -109,6 +109,9 @@ type XdtRetrievalSettings = {
 
 [<DataContract>]
 type EntityInfo = {
+  [<field : DataMember(Name = "LogicalName")>]
+  LogicalName: string
+
   [<field : DataMember(Name = "SchemaName")>]
   SchemaName: string
 
@@ -130,7 +133,7 @@ type RawState = {
   metadata: EntityMetadata[]
   
   [<field : DataMember>]
-  nameMap: Map<string, EntityInfo>
+  info: EntityInfo[]
 
   [<field : DataMember>]
   bpfData: Entity[]

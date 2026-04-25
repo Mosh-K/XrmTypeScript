@@ -60,7 +60,7 @@ let getAttributeComment (attr: XrmAttribute) (options: OptionSet list option) =
   Comment.Attribute(
     attr.displayName,
     colType = attr.colType,
-    ?tes = attr.targetEntitySets,
+    tes = attr.targetEntitySets,
     link = link,
     logicalName = logicalName
   )
@@ -223,25 +223,20 @@ let getFormattedVars (entity: XrmEntity) =
 
 let getLookupNameVars (attrs: XrmAttribute list) =
   attrs
-  |> List.choose (fun a ->
-    match a.targetEntitySets with
-    | None
-    | Some [||] -> None
-    | Some tes ->
-      let unionType =
-        tes
-        |> Array.map (fun (n, _, _) -> TsType.Custom $"\"{n}\"")
-        |> Array.toList
-        |> TsType.Union
+  |> List.filter (fun a -> a.specialType = SpecialType.EntityReference)
+  |> List.map (fun a ->
+    let unionType =
+      a.targetEntitySets
+      |> Array.map (fun e -> TsType.Custom $"\"{e.LogicalName}\"")
+      |> Array.toList
+      |> TsType.Union
 
-      Some(
-        Variable.Create(
-          $"\"{valueInfix a.logicalName}@Microsoft.Dynamics.CRM.lookuplogicalname\"",
-          unionType,
-          Comment.Attribute(a.displayName, ?tes = a.targetEntitySets),
-          optional = true
-        )
-      ))
+    Variable.Create(
+      $"\"{valueInfix a.logicalName}@Microsoft.Dynamics.CRM.lookuplogicalname\"",
+      unionType,
+      Comment.Attribute(a.displayName, tes = a.targetEntitySets),
+      optional = true
+    ))
   |> sortByName
 
 let getScalarVars (filter: XrmAttribute -> bool) (entity: XrmEntity) =
@@ -294,9 +289,7 @@ let getIntersectEntities (nameMap: Map<string, EntityInfo>) (entity: XrmEntity) 
     | [] -> []
     | rel :: _ ->
       [ rel.Entity1LogicalName; rel.Entity2LogicalName ]
-      |> List.map (fun ln ->
-        let eInfo = Map.find ln nameMap
-        ln, eInfo.DisplayName)
+      |> List.map (fun ln -> Map.find ln nameMap)
 
 let getBlankEntityInterfaces (nameMap: Map<string, EntityInfo>) (entity: XrmEntity) =
   let comment =

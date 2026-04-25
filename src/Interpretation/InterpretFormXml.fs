@@ -51,12 +51,10 @@ let getTargetEntities (tes: string option) (a: XrmAttribute option) =
   | None, None -> "\"NoAttribute\""
   | None, Some a' ->
     match a'.targetEntitySets with
-    | None -> if a.Value.specialType = Guid then "string" else "\"NoAttributeTargets\""
-    | Some tes' ->
-      let el = tes' |> Array.map (fun (l, _, _) -> l) |> Array.toList
-      match el.IsEmpty with
-      | true -> "\"NoTargets\""
-      | false -> List.fold(fun acc e -> $"{acc} | \"{e}\"") ($"\"{el.Head}\"") el.Tail
+    | [||] -> if a.Value.specialType = Guid then "string" else "\"NoAttributeTargets\""
+    | tes' ->
+      let el = tes' |> Array.map (fun e -> e.LogicalName) |> Array.toList
+      List.fold(fun acc e -> $"{acc} | \"{e}\"") ($"\"{el.Head}\"") el.Tail
 
 let getAttributeType = function
   | None -> TsType.Undefined
@@ -72,7 +70,7 @@ let getAttribute (enums:Map<string,TsType>) (entity: XrmEntity) (cField: Control
   let comment = 
     match attribute with
     | None -> Comment.Basic cField.displayName
-    | Some attr -> Comment.Attribute(attr.displayName, colType = attr.colType, ?tes = attr.targetEntitySets, link = getEnumLink entity.optionSets attr)
+    | Some attr -> Comment.Attribute(attr.displayName, colType = attr.colType, tes = attr.targetEntitySets, link = getEnumLink entity.optionSets attr)
 
   let attrType = getAttributeType attribute
 
@@ -136,7 +134,7 @@ let getControl  (enums:Map<string,TsType>) (entity: XrmEntity) (cField:ControlFi
     | None -> Comment.Basic cField.displayName
     | Some attr ->
       let label = if cField.displayName.Trim() <> attr.displayName.Trim() then cField.displayName else ""
-      Comment.Attribute(attr.displayName, label = label, colType = attr.colType, ?tes = attr.targetEntitySets, link = getEnumLink entity.optionSets attr)
+      Comment.Attribute(attr.displayName, label = label, colType = attr.colType, tes = attr.targetEntitySets, link = getEnumLink entity.optionSets attr)
     
   let cType = 
     match cField.controlClass with
