@@ -30,6 +30,8 @@ and typeToString = function
   | TsType.Generic(n, t)  -> sprintf "%s<%s>" n t
   | TsType.SpecificGeneric(n,ts) 
                           -> sprintf "%s<%s>" n (ts |> Seq.map typeToString |> String.concat ", ")
+  | TsType.Union []       -> failwith "TsType.Union requires at least one type"
+  | TsType.Intersection [] -> failwith "TsType.Intersection requires at least one type"
   | TsType.Union types    -> types |> List.map wrapIfRecursive |> String.concat " | "
   | TsType.Intersection types    -> types |> List.map wrapIfRecursive |> String.concat " & "
 

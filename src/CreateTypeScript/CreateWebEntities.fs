@@ -225,15 +225,18 @@ let getLookupNameVars (attrs: XrmAttribute list) =
   attrs
   |> List.filter (fun a -> a.specialType = SpecialType.EntityReference)
   |> List.map (fun a ->
-    let unionType =
-      a.targetEntitySets
-      |> Array.map (fun e -> TsType.Custom $"\"{e.LogicalName}\"")
-      |> Array.toList
-      |> TsType.Union
+    let vType =
+      match a.targetEntitySets with
+      | [||] -> TsType.String
+      | tes ->
+        tes
+        |> Array.map (fun e -> TsType.Custom $"\"{e.LogicalName}\"")
+        |> Array.toList
+        |> TsType.Union
 
     Variable.Create(
       $"\"{valueInfix a.logicalName}@Microsoft.Dynamics.CRM.lookuplogicalname\"",
-      unionType,
+      vType,
       Comment.Attribute(a.displayName, tes = a.targetEntitySets),
       optional = true
     ))
