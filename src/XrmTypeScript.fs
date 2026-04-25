@@ -71,7 +71,7 @@ type XrmTypeScript private () =
     try
     #endif 
       
-      retrieveRawState xrmAuth rSettings
+      retrieveRawState xrmAuth rSettings gSettings.skipForms
       |> generateFromRaw gSettings
       printfn "\nSuccessfully generated all TypeScript declaration files."
 
@@ -92,7 +92,7 @@ type XrmTypeScript private () =
       let serializer = DataContractJsonSerializer(typeof<RawState>, null, System.Int32.MaxValue, true, null, false)
       use stream = new FileStream(filePath, FileMode.Create)
 
-      retrieveRawState xrmAuth rSettings
+      retrieveRawState xrmAuth rSettings false
       |> fun state -> serializer.WriteObject(stream, state)
       printfn "\nSuccessfully saved retrieved data to file %s." (Path.GetFullPath filePath)
 

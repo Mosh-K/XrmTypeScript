@@ -55,7 +55,7 @@ let retrieveCrmVersion mainProxy =
   version
 
 /// Retrieve all the necessary CRM data
-let retrieveCrmData crmVersion entities (mainProxy:IOrganizationService) skipInactiveForms =
+let retrieveCrmData crmVersion entities (mainProxy: IOrganizationService) skipInactiveForms skipForms =
   let entitiesInfo =
     retrieveEntitiesInfo mainProxy
 
@@ -64,22 +64,27 @@ let retrieveCrmData crmVersion entities (mainProxy:IOrganizationService) skipIna
     |> Array.sortBy(fun md -> md.LogicalName)
 
   let bpfData = 
-    match crmVersion .>= (6,0,0,0) with
-    | false -> [||]
-    | true  -> 
+    match skipForms, crmVersion .>= (6, 0, 0, 0) with
+    | false, true ->
       printf "Fetching BPF metadata from CRM..."
       let data = getBpfData mainProxy
       printfn "Done!"
       data
+    | _ -> [||]
 
-  printf "Fetching FormXmls from CRM..."
   let formData =
-    rawEntityMetadata
-    |> Array.filter (fun (em: EntityMetadata) -> em.IsCustomizable.Value)
-    |> Array.map (fun (em: EntityMetadata) -> em.LogicalName)
-    |> getEntityFormsBulk mainProxy skipInactiveForms 
-    |> Map.ofArray
-  printfn "Done!"
+    match skipForms with
+    | true -> Map.empty
+    | false ->
+      printf "Fetching FormXmls from CRM..."
+      let data =
+        rawEntityMetadata
+        |> Array.filter (fun (em: EntityMetadata) -> em.IsCustomizable.Value)
+        |> Array.map (fun (em: EntityMetadata) -> em.LogicalName)
+        |> getEntityFormsBulk mainProxy skipInactiveForms
+        |> Map.ofArray
+      printfn "Done!"
+      data
 
   { 
     RawState.metadata = rawEntityMetadata

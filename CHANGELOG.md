@@ -14,6 +14,7 @@
 - `Create` and `Update` interfaces restructured: bind variables are derived from raw SDK relationship metadata rather than the intermediate representation
 - Relationship variables for entities not included in generation now emit `any` instead of being silently omitted
 - Entity primary ID attribute promoted to a full `XrmAttribute`, carrying display name and column type metadata into generated JSDoc comments
+- `skipForms` now also skips FormXml metadata retrieval from CRM, not just file emission, reducing generation time when forms aren't needed
 ### Fixed
 - Updated `xrm.d.ts` from the original XRM library
 - Fixed ManyToMany relationship navigation property names being swapped when the current entity is the second entity in the relationship

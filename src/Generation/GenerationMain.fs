@@ -9,7 +9,7 @@ open FileGeneration
 
 
 /// Retrieve data from CRM and setup raw state
-let retrieveRawState xrmAuth rSettings =
+let retrieveRawState xrmAuth rSettings skipForms =
   let mainProxy = connectToCrm xrmAuth
 
   let crmVersion = retrieveCrmVersion mainProxy
@@ -17,7 +17,7 @@ let retrieveRawState xrmAuth rSettings =
     getFullEntityList rSettings.entities rSettings.solutions mainProxy
       
   // Retrieve data from CRM
-  retrieveCrmData crmVersion entities mainProxy rSettings.skipInactiveForms
+  retrieveCrmData crmVersion entities mainProxy rSettings.skipInactiveForms skipForms
 
 /// Main generator function
 let generateFromRaw (gSettings: XdtGenerationSettings) rawState =
