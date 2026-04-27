@@ -41,6 +41,8 @@ let interpretNormalAttribute aType (options:OptionSet option)  =
         
   | XrmAttributeType.Uniqueidentifier     -> TsType.String, SpecialType.Guid
 
+  | XrmAttributeType.File                 -> TsType.String, SpecialType.Default
+
   | _                                     -> typeConv aType, SpecialType.Default
 
 let interpretAttribute (nameMap: Map<string, EntityInfo>) labelMapping (a: AttributeMetadata) =

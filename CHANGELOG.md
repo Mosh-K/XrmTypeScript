@@ -18,6 +18,8 @@
 ### Fixed
 - Updated `xrm.d.ts` from the original XRM library
 - Fixed ManyToMany relationship navigation property names being swapped when the current entity is the second entity in the relationship
+- File-type columns now appear in generated typings as `string | null` (previously silently dropped by the old SDK SOAP deserializer); requires `Microsoft.CrmSdk.XrmTooling.CoreAssembly` ≥ 9.1.1.65
+- Navigation properties that are shadowed by a same-named non-lookup scalar (e.g. File, Uniqueidentifier) are now suppressed from `ManyToOne` read/write interfaces and `@odata.bind` create/update interfaces, matching the OData CSDL wire surface
 
 ## [1.3.0] - 2026-04-15
 ### Changed
