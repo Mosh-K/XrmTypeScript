@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.4.0] - 2026-04-28
 ### Changed
 - WebEntities internal interfaces reorganized into sub-namespaces under `_`: `Scalars`, `Read`, `Write`, `Binds`, and `Lookup`, replacing the previous flat layout
 - Lookup value properties (`_*_value`) now include the lookup field's logical name in their JSDoc comment
@@ -10,14 +10,13 @@
 - Relationship JSDoc comments now include a `Partner:` line with the counterpart navigation property name
 - Intersect entities not in the user's entity selection are fetched from CRM automatically, restoring upstream behavior
 - `activityparty` is fetched automatically when any selected entity has a PartyList attribute, restoring upstream behavior
-- `Comment` refactored into named factory methods (`Basic`, `Attribute`, `Relationship`, `Entity`, `Other`) that return `string list` directly, replacing the single `Comment.Create` / `ToCommentStrings()` approach
 - `Create` and `Update` interfaces restructured: bind variables are derived from raw SDK relationship metadata rather than the intermediate representation
-- Relationship variables for entities not included in generation now emit `any` instead of being silently omitted
+- Relationship variables for entities not included in generation now emit `any` instead of a non-existent type
 - Entity primary ID attribute promoted to a full `XrmAttribute`, carrying display name and column type metadata into generated JSDoc comments
 - `skipForms` now also skips FormXml metadata retrieval from CRM, not just file emission, reducing generation time when forms aren't needed
 ### Fixed
 - Updated `xrm.d.ts` from the original XRM library
-- Fixed ManyToMany relationship navigation property names being swapped when the current entity is the second entity in the relationship
+- Fixed ManyToMany relationship navigation property names being swapped (only observable when the two sides have different names)
 - File-type columns now appear in generated typings as `string | null` (previously silently dropped by the old SDK SOAP deserializer); requires `Microsoft.CrmSdk.XrmTooling.CoreAssembly` ≥ 9.1.1.65
 - Navigation properties that are shadowed by a same-named non-lookup scalar (e.g. File, Uniqueidentifier) are now suppressed from `ManyToOne` read/write interfaces and `@odata.bind` create/update interfaces, matching the OData CSDL wire surface
 
@@ -50,6 +49,7 @@
 ### Added
 - Initial public release
 
+[1.4.0]: https://github.com/Mosh-K/XrmTypeScript/releases/tag/v1.4.0
 [1.3.0]: https://github.com/Mosh-K/XrmTypeScript/releases/tag/v1.3.0
 [1.2.0]: https://github.com/Mosh-K/XrmTypeScript/releases/tag/v1.2.0
 [1.1.0]: https://github.com/Mosh-K/XrmTypeScript/releases/tag/v1.1.0
