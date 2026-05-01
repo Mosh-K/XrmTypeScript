@@ -1,12 +1,36 @@
 ﻿module DG.XrmTypeScript.DataRetrieval
 
+open System.Net.Http
+open System.Xml
+
+open Microsoft.OData.Edm.Csdl
+
 open Utility
 
 open CrmBaseHelper
 open CrmDataHelper
 open Microsoft.Xrm.Sdk.Metadata
 open Microsoft.Xrm.Sdk
+open Microsoft.Xrm.Tooling.Connector
 
+
+/// Fetch the OData CSDL $metadata XML from the Web API
+let fetchCsdlXml (proxy: IOrganizationService) =
+  printf "Fetching OData $metadata..."
+  match proxy with
+  | :? CrmServiceClient as client ->
+      let baseUri = client.CrmConnectOrgUriActual
+      let url = $"{baseUri.Scheme}://{baseUri.Host}/api/data/v9.2/$metadata"
+      use http = new HttpClient()
+      http.DefaultRequestHeaders.Authorization <- Headers.AuthenticationHeaderValue("Bearer", client.CurrentAccessToken)
+      let xml = http.GetStringAsync(url).Result
+      use reader = XmlReader.Create(new System.IO.StringReader(xml))
+      let model = CsdlReader.Parse reader
+      printfn "Done!"
+      Some model
+  | _ ->
+      printfn "Skipped (proxy is not CrmServiceClient)"
+      None
 
 /// Connect to CRM with the given authentication
 let connectToCrm xrmAuth =

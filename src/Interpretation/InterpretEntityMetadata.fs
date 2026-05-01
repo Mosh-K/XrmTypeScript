@@ -41,16 +41,13 @@ let interpretNormalAttribute aType (options:OptionSet option)  =
         
   | XrmAttributeType.Uniqueidentifier     -> TsType.String, SpecialType.Guid
 
-  | XrmAttributeType.File                 -> TsType.String, SpecialType.Default
+  | XrmAttributeType.File                 -> TsType.String, SpecialType.Guid
+  | XrmAttributeType.Image                -> TsType.String, SpecialType.Default
 
   | _                                     -> typeConv aType, SpecialType.Default
 
 let interpretAttribute (nameMap: Map<string, EntityInfo>) labelMapping (a: AttributeMetadata) =
   let aType = XrmAttributeType.fromDisplayName a.AttributeTypeName
-  if a.AttributeOf <> null ||
-      aType = XrmAttributeType.Virtual ||
-      a.LogicalName.StartsWith("yomi") then None, None
-  else
 
   let options =
     match a with
@@ -65,7 +62,7 @@ let interpretAttribute (nameMap: Map<string, EntityInfo>) labelMapping (a: Attri
 
   let vType, sType = interpretNormalAttribute aType options
     
-  options, Some {
+  options, {
     XrmAttribute.schemaName = a.SchemaName
     logicalName = a.LogicalName
     varType = vType
@@ -88,7 +85,6 @@ let interpretEntity (nameMap: Map<string, EntityInfo>) labelMapping (metadata:En
 
   let attributes = 
     attributes 
-    |> Array.choose id 
     |> Array.toList
    
   let optionSets = 

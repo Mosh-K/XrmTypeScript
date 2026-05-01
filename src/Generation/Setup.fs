@@ -3,10 +3,13 @@
 open System
 open System.Collections.Generic
 
+open Microsoft.OData.Edm
+
 open IntermediateRepresentation
 open InterpretEntityMetadata
 open InterpretBpfJson
 open InterpretFormXml
+open FilterByCsdl
 
 
 let intersectMappedSets a b = Map.ofSeq (seq {
@@ -67,14 +70,30 @@ let intersectForms formDict formsToIntersect =
   |> Seq.append formDict.Values
   |> Seq.toArray
 
+let private buildEdmTypeMap (model: IEdmModel) =
+  model.SchemaElements
+  |> Seq.choose (function
+    | :? IEdmEntityType as t -> Some(t.Name, t)
+    | _ -> None)
+  |> Map.ofSeq
+
 /// Interprets the raw CRM data into an intermediate state used for further generation
-let interpretCrmData (gSettings: XdtGenerationSettings) (rawState: RawState) =
+let interpretCrmData (gSettings: XdtGenerationSettings) (csdlModel: IEdmModel option) (rawState: RawState) =
   printf "Interpreting data..."
 
-  let nameMap = rawState.info |> Array.map (fun e -> e.LogicalName, e) |> Map.ofArray
+  let infoMap = rawState.info |> Array.map (fun e -> e.LogicalName, e) |> Map.ofArray
 
   let entityMetadata =
-    rawState.metadata |> Array.Parallel.map (interpretEntity nameMap gSettings.labelMapping)
+    let interpreted = rawState.metadata |> Array.Parallel.map (interpretEntity infoMap gSettings.labelMapping)
+    match csdlModel with
+    | None -> interpreted
+    | Some model ->
+      let edmTypes = buildEdmTypeMap model
+      interpreted
+      |> Array.Parallel.choose (fun e ->
+        match Map.tryFind e.logicalName edmTypes with
+        | Some edmType -> Some (filterEntity edmType e)
+        | None -> None)
 
   let bpfControls = interpretBpfs rawState.bpfData
 
@@ -86,5 +105,5 @@ let interpretCrmData (gSettings: XdtGenerationSettings) (rawState: RawState) =
     bpfControls = bpfControls
     forms = forms
     outputDir = gSettings.out
-    nameMap = nameMap
+    nameMap = infoMap
   }

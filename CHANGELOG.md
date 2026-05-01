@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+### Changed
+- Attributes and navigation properties are now filtered against the OData CSDL `$metadata`, ensuring generated typings reflect only what is accessible on the wire
+- Virtual attributes (shadow fields, `yomi*` names, metadata-only columns) are now excluded via CSDL rather than SDK-side heuristics
+- File-type columns are now typed as GUIDs, reflecting their actual wire format
+### Fixed
+- Duplicate ManyToOne navigation properties (collapsed by the CSDL) no longer generate duplicate interface members
+
 ## [1.4.0] - 2026-04-28
 ### Changed
 - WebEntities internal interfaces reorganized into sub-namespaces under `_`: `Scalars`, `Read`, `Write`, `Binds`, and `Lookup`, replacing the previous flat layout

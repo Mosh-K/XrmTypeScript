@@ -11,15 +11,11 @@ type Comment =
     | [ line ] -> [ $"/** {line} */" ]
     | _ -> [ "/**" ] @ (lines |> List.collect (fun l -> [ ""; l ]) |> List.tail |> List.map (sprintf " * %s  ")) @ [ " */" ]
 
-  static member Entity(displayName, setName, ?logicalName, ?isIntersect, ?intersectEntities) =
+  static member Entity(displayName, setName, ?logicalName, ?isIntersect) =
     let logicalName = defaultArg logicalName ""
-    let intersectEntities = defaultArg intersectEntities []
     
     [ 
       if defaultArg isIntersect false then yield "Intersect Table"
-      match intersectEntities with
-      | e1 :: e2 :: _ -> yield $"Intersects: {e1.DisplayName} (`{e1.LogicalName}`) ⟷ {e2.DisplayName} (`{e2.LogicalName}`)"
-      | _ -> () 
       if not (IsNullOrWhiteSpace displayName) then yield $"**{displayName.Trim()}**"
       if not (IsNullOrWhiteSpace logicalName) then yield $"Logical Name: `{logicalName.Trim()}`"
       if not (IsNullOrWhiteSpace setName) then yield $"Set Name: `{setName.Trim()}`"

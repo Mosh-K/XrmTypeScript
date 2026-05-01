@@ -72,23 +72,12 @@ let getScalarType (attr: XrmAttribute) =
 
 (** Variable functions *)
 
-/// True when an attribute on the entity claims the same OData property name as the given
-/// navigation property name. Lookup-style attributes (specialType = EntityReference) are
-/// renamed to `_<name>_value` in the OData CSDL so they don't shadow; everything else
-/// (Uniqueidentifier, File, Image, plain scalars) keeps its natural name and forces
-/// Dataverse to drop the navigation property from the wire.
-let private isShadowedByScalar (attrMap: Map<string, XrmAttribute>) navPropName =
-  Map.tryFind navPropName attrMap
-  |> Option.exists (fun a -> a.specialType <> SpecialType.EntityReference)
 
 let getBindVars (nameMap: Map<string, EntityInfo>) (filter: XrmAttribute -> bool) (entity: XrmEntity) =
   let attrMap = entity.attributes |> List.map (fun a -> a.logicalName, a) |> Map.ofList
 
   entity.manyToOneRelationships
-  |> List.filter (fun rel ->
-    not (isNull rel.ReferencingEntityNavigationPropertyName)
-    && Map.tryFind rel.ReferencingAttribute attrMap |> Option.exists filter
-    && not (isShadowedByScalar attrMap rel.ReferencingEntityNavigationPropertyName))
+  |> List.filter (fun rel -> Map.tryFind rel.ReferencingAttribute attrMap |> Option.exists filter)
   |> List.map (fun rel ->
     let eInfo = Map.find rel.ReferencedEntity nameMap
 
@@ -121,13 +110,8 @@ let getLookupValueVars (attrs: XrmAttribute list) =
 let private toInterfaceName forWrite schemaName =
   if forWrite then $"{schemaName}.{CREATE_INTERFACE_NAME}" else schemaName
 
-let getManyToOneVars nameMap (schemaNames: Set<string>) forWrite (entity: XrmEntity) =
-  let attrMap = entity.attributes |> List.map (fun a -> a.logicalName, a) |> Map.ofList
-
-  entity.manyToOneRelationships
-  |> List.filter (fun rel ->
-    not (isNull rel.ReferencingEntityNavigationPropertyName)
-    && not (isShadowedByScalar attrMap rel.ReferencingEntityNavigationPropertyName))
+let getManyToOneVars nameMap (schemaNames: Set<string>) forWrite (rels: OneToManyRelationshipMetadata list) =
+  rels
   |> List.map (fun rel ->
     let eInfo = Map.find rel.ReferencedEntity nameMap
 
@@ -164,7 +148,6 @@ let getManyToOneVars nameMap (schemaNames: Set<string>) forWrite (entity: XrmEnt
 
 let getOneToManyVars nameMap (schemaNames: Set<string>) forWrite (rels: OneToManyRelationshipMetadata list) =
   rels
-  |> List.filter (fun rel -> not (isNull rel.ReferencedEntityNavigationPropertyName))
   |> List.map (fun rel ->
     let eInfo = Map.find rel.ReferencingEntity nameMap
     let inGeneration = schemaNames.Contains eInfo.SchemaName
@@ -190,10 +173,6 @@ let getOneToManyVars nameMap (schemaNames: Set<string>) forWrite (rels: OneToMan
 
 let getManyToManyVars nameMap (schemaNames: Set<string>) forWrite (entity: XrmEntity) =
   entity.manyToManyRelationships
-  |> List.filter (fun rel ->
-    (entity.logicalName = rel.Entity1LogicalName || entity.logicalName = rel.Entity2LogicalName) // Filter intersect tables
-    && not (isNull rel.Entity1NavigationPropertyName)
-    && not (isNull rel.Entity2NavigationPropertyName))
   |> List.map (fun rel ->
     let navProp, partnerNavProp, otherLogical =
       if entity.logicalName = rel.Entity2LogicalName then
@@ -300,22 +279,12 @@ type EntityInterfaces = {
   read: Interface
 }
 
-let getIntersectEntities (nameMap: Map<string, EntityInfo>) (entity: XrmEntity) =
-  if not entity.isIntersect then []
-  else
-    match entity.manyToManyRelationships with
-    | [] -> []
-    | rel :: _ ->
-      [ rel.Entity1LogicalName; rel.Entity2LogicalName ]
-      |> List.map (fun ln -> Map.find ln nameMap)
-
 let getBlankEntityInterfaces (nameMap: Map<string, EntityInfo>) (entity: XrmEntity) =
   let comment =
     Comment.Entity(
       entity.displayName,
       setName = entity.setName,
       isIntersect = entity.isIntersect,
-      intersectEntities = getIntersectEntities nameMap entity,
       logicalName = entity.logicalName
     )
 
@@ -402,7 +371,7 @@ let getEntityInterfaceLines nameMap (schemaNames: Set<string>) (entity: XrmEntit
   let readInterfaces =
     [
       entityInterfaces.readRelationships
-      { entityInterfaces.readManyToOne with vars = getManyToOneVars nameMap schemaNames false entity }
+      { entityInterfaces.readManyToOne with vars = getManyToOneVars nameMap schemaNames false entity.manyToOneRelationships }
       { entityInterfaces.readOneToMany with vars = getOneToManyVars nameMap schemaNames false entity.oneToManyRelationships }
       { entityInterfaces.readManyToMany with vars = getManyToManyVars nameMap schemaNames false entity }
     ]
@@ -410,7 +379,7 @@ let getEntityInterfaceLines nameMap (schemaNames: Set<string>) (entity: XrmEntit
   let writeInterfaces =
     [
       entityInterfaces.writeRelationships
-      { entityInterfaces.writeManyToOne with vars = getManyToOneVars nameMap schemaNames true entity }
+      { entityInterfaces.writeManyToOne with vars = getManyToOneVars nameMap schemaNames true entity.manyToOneRelationships }
       { entityInterfaces.writeOneToMany with vars = getOneToManyVars nameMap schemaNames true entity.oneToManyRelationships }
       { entityInterfaces.writeManyToMany with vars = getManyToManyVars nameMap schemaNames true entity }
     ]

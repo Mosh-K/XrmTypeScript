@@ -38,6 +38,7 @@
     <Compile Include="Interpretation\InterpretCommon.fs" />
     <Compile Include="Interpretation\InterpretOptionSetMetadata.fs" />
     <Compile Include="Interpretation\InterpretEntityMetadata.fs" />
+    <Compile Include="Interpretation\FilterByCsdl.fs" />
     <Compile Include="Interpretation\InterpretFormXml.fs" />
     <Compile Include="Interpretation\InterpretBpfJson.fs" />
     <Compile Include="CreateTypeScript\CreateCommon.fs" />
@@ -63,6 +64,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.CrmSdk.XrmTooling.CoreAssembly" Version="9.1.1.65" />
+    <PackageReference Include="Microsoft.OData.Edm" Version="7.*" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
