@@ -71,8 +71,8 @@ type XrmTypeScript private () =
     try
     #endif 
       
-      let rawState, csdlModel = retrieveRawState xrmAuth rSettings gSettings.skipForms
-      generateFromRaw gSettings csdlModel rawState
+      let rawState = retrieveRawState xrmAuth rSettings gSettings.skipForms
+      generateFromRaw gSettings rawState
       printfn "\nSuccessfully generated all TypeScript declaration files."
 
     #if !DEBUG
@@ -93,7 +93,7 @@ type XrmTypeScript private () =
       use stream = new FileStream(filePath, FileMode.Create)
 
       retrieveRawState xrmAuth rSettings false
-      |> fun (state, _) -> serializer.WriteObject(stream, state)
+      |> fun state -> serializer.WriteObject(stream, state)
       printfn "\nSuccessfully saved retrieved data to file %s." (Path.GetFullPath filePath)
 
     #if !DEBUG
@@ -137,7 +137,7 @@ type XrmTypeScript private () =
           serializer.ReadObject(stream) :?> RawState
         with ex -> failwithf "\nUnable to parse data file"
     
-      generateFromRaw gSettings None rawState
+      generateFromRaw gSettings rawState
       printfn "\nSuccessfully generated all TypeScript declaration files."
 
     #if !DEBUG

@@ -3,6 +3,7 @@
 open System.Net.Http
 open System.Xml
 
+open Microsoft.OData.Edm
 open Microsoft.OData.Edm.Csdl
 
 open Utility
@@ -110,12 +111,29 @@ let retrieveCrmData crmVersion entities (mainProxy: IOrganizationService) skipIn
       printfn "Done!"
       data
 
+  let csdlData =
+    let nameSet = rawEntityMetadata |> Array.map (fun m -> m.LogicalName) |> Set.ofArray
+    match fetchCsdlXml mainProxy with
+    | None -> [||]
+    | Some model ->
+        model.SchemaElements
+        |> Seq.choose (function
+          | :? IEdmEntityType as t when Set.contains t.Name nameSet ->
+              Some {
+                CsdlEntityInfo.Name = t.Name
+                StructuralProperties = t.StructuralProperties() |> Seq.map (fun p -> p.Name) |> Array.ofSeq
+                NavigationProperties = t.NavigationProperties() |> Seq.map (fun p -> p.Name) |> Array.ofSeq
+              }
+          | _ -> None)
+        |> Array.ofSeq
+
   { 
     RawState.metadata = rawEntityMetadata
     info = entitiesInfo
     bpfData = bpfData
     formData = formData 
     crmVersion = crmVersion
+    csdlData = csdlData
   }
 
 /// Gets all the entities related to the given solutions and merges with the given entities

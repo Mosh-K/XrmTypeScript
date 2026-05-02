@@ -14,16 +14,14 @@ let retrieveRawState xrmAuth rSettings skipForms =
 
   let crmVersion = retrieveCrmVersion mainProxy
 
-  let csdlModel = fetchCsdlXml mainProxy
-
   let entities = 
     getFullEntityList rSettings.entities rSettings.solutions mainProxy
       
   // Retrieve data from CRM
-  retrieveCrmData crmVersion entities mainProxy rSettings.skipInactiveForms skipForms, csdlModel
+  retrieveCrmData crmVersion entities mainProxy rSettings.skipInactiveForms skipForms
 
 /// Main generator function
-let generateFromRaw (gSettings: XdtGenerationSettings) csdlModel rawState =
+let generateFromRaw (gSettings: XdtGenerationSettings) rawState =
   let crmVersion = gSettings.crmVersion ?| rawState.crmVersion
 
   // Pre-generation tasks 
@@ -31,7 +29,7 @@ let generateFromRaw (gSettings: XdtGenerationSettings) csdlModel rawState =
 
   // Interpret data and generate resource files
   let data =
-    interpretCrmData gSettings csdlModel rawState
+    interpretCrmData gSettings rawState
 
   let defs = 
     seq {

@@ -1,6 +1,5 @@
 module internal DG.XrmTypeScript.FilterByCsdl
 
-open Microsoft.OData.Edm
 open IntermediateRepresentation
 
 
@@ -9,16 +8,9 @@ let private toCsdlPropName (attr: XrmAttribute) =
   | SpecialType.EntityReference -> $"_{attr.logicalName}_value"
   | _ -> attr.logicalName
 
-let filterEntity (edmType: IEdmEntityType) (entity: XrmEntity) : XrmEntity =
-  let csdlProps =
-    edmType.StructuralProperties()
-    |> Seq.map (fun p -> p.Name)
-    |> Set.ofSeq
-
-  let csdlNavProps =
-    edmType.NavigationProperties()
-    |> Seq.map (fun p -> p.Name)
-    |> Set.ofSeq
+let filterEntity (entityInfo: CsdlEntityInfo) (entity: XrmEntity) : XrmEntity =
+  let csdlProps = Set.ofArray entityInfo.StructuralProperties
+  let csdlNavProps = Set.ofArray entityInfo.NavigationProperties
 
   { entity with
       attributes =

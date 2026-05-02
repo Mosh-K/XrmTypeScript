@@ -122,6 +122,19 @@ type EntityInfo = {
   DisplayName: string
 }
 
+[<DataContract>]
+type CsdlEntityInfo = {
+
+  [<field : DataMember(Name = "Name")>]
+  Name: string
+
+  [<field : DataMember(Name = "StructuralProperties")>]
+  StructuralProperties: string[]
+
+  [<field : DataMember(Name = "NavigationProperties")>]
+  NavigationProperties: string[]
+}
+
 /// Serializable record containing necessary (meta)data
 [<DataContract>]
 type RawState = {
@@ -140,4 +153,7 @@ type RawState = {
   
   [<field : DataMember>]
   formData: Map<string, Entity[]>
+
+  [<field : DataMember>]
+  csdlData: CsdlEntityInfo[]
 }
