@@ -11,27 +11,21 @@ open Utility
 open CrmBaseHelper
 open CrmDataHelper
 open Microsoft.Xrm.Sdk.Metadata
-open Microsoft.Xrm.Sdk
 open Microsoft.Xrm.Tooling.Connector
 
 
 /// Fetch the OData CSDL $metadata XML from the Web API
-let fetchCsdlXml (proxy: IOrganizationService) =
+let fetchCsdlXml (client: CrmServiceClient) =
   printf "Fetching OData $metadata..."
-  match proxy with
-  | :? CrmServiceClient as client ->
-      let baseUri = client.CrmConnectOrgUriActual
-      let url = $"{baseUri.Scheme}://{baseUri.Host}/api/data/v9.2/$metadata"
-      use http = new HttpClient()
-      http.DefaultRequestHeaders.Authorization <- Headers.AuthenticationHeaderValue("Bearer", client.CurrentAccessToken)
-      let xml = http.GetStringAsync(url).Result
-      use reader = XmlReader.Create(new System.IO.StringReader(xml))
-      let model = CsdlReader.Parse reader
-      printfn "Done!"
-      Some model
-  | _ ->
-      printfn "Skipped (proxy is not CrmServiceClient)"
-      None
+  let baseUri = client.CrmConnectOrgUriActual
+  let url = $"{baseUri.Scheme}://{baseUri.Host}/api/data/v9.2/$metadata"
+  use http = new HttpClient()
+  http.DefaultRequestHeaders.Authorization <- Headers.AuthenticationHeaderValue("Bearer", client.CurrentAccessToken)
+  let xml = http.GetStringAsync(url).Result
+  use reader = XmlReader.Create(new System.IO.StringReader(xml))
+  let model = CsdlReader.Parse reader
+  printfn "Done!"
+  model
 
 /// Connect to CRM with the given authentication
 let connectToCrm xrmAuth =
@@ -56,7 +50,7 @@ let retrieveEntitiesInfo mainProxy =
   arr
 
 // Retrieve CRM entity metadata
-let retrieveEntityMetadata entities (mainProxy:IOrganizationService) =
+let retrieveEntityMetadata entities (mainProxy: CrmServiceClient) =
   printf "Fetching specific entity metadata from CRM..."
 
   let rawEntityMetadata = 
@@ -80,7 +74,7 @@ let retrieveCrmVersion mainProxy =
   version
 
 /// Retrieve all the necessary CRM data
-let retrieveCrmData crmVersion entities (mainProxy: IOrganizationService) skipInactiveForms skipForms =
+let retrieveCrmData crmVersion entities (mainProxy: CrmServiceClient) skipInactiveForms skipForms =
   let entitiesInfo =
     retrieveEntitiesInfo mainProxy
 
@@ -113,19 +107,16 @@ let retrieveCrmData crmVersion entities (mainProxy: IOrganizationService) skipIn
 
   let csdlData =
     let nameSet = rawEntityMetadata |> Array.map (fun m -> m.LogicalName) |> Set.ofArray
-    match fetchCsdlXml mainProxy with
-    | None -> [||]
-    | Some model ->
-        model.SchemaElements
-        |> Seq.choose (function
-          | :? IEdmEntityType as t when Set.contains t.Name nameSet ->
-              Some {
-                CsdlEntityInfo.Name = t.Name
-                StructuralProperties = t.StructuralProperties() |> Seq.map (fun p -> p.Name) |> Array.ofSeq
-                NavigationProperties = t.NavigationProperties() |> Seq.map (fun p -> p.Name) |> Array.ofSeq
-              }
-          | _ -> None)
-        |> Array.ofSeq
+    (fetchCsdlXml mainProxy).SchemaElements
+    |> Seq.choose (function
+      | :? IEdmEntityType as t when Set.contains t.Name nameSet ->
+          Some {
+            CsdlEntityInfo.Name = t.Name
+            StructuralProperties = t.StructuralProperties() |> Seq.map (fun p -> p.Name) |> Array.ofSeq
+            NavigationProperties = t.NavigationProperties() |> Seq.map (fun p -> p.Name) |> Array.ofSeq
+          }
+      | _ -> None)
+    |> Array.ofSeq
 
   { 
     RawState.metadata = rawEntityMetadata
@@ -137,7 +128,7 @@ let retrieveCrmData crmVersion entities (mainProxy: IOrganizationService) skipIn
   }
 
 /// Gets all the entities related to the given solutions and merges with the given entities
-let getFullEntityList entities solutions (proxy:IOrganizationService) =
+let getFullEntityList entities solutions (proxy: CrmServiceClient) =
   printf "Figuring out which entities should be included in the context.."
   let solutionEntities = 
     match solutions with

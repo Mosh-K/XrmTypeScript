@@ -12,15 +12,10 @@ type XrmTypeScript private () =
   static member GenerateFromCrm
     (
       url,
-      ?method,
+      method,
       ?clientId,
       ?clientSecret,
-      ?returnUrl,
       ?connectionString,
-      ?username,
-      ?password,
-      ?domain,
-      ?ap,
       ?outDir,
       ?entities,
       ?solutions,
@@ -39,12 +34,7 @@ type XrmTypeScript private () =
         method = method
         clientId = clientId
         clientSecret = clientSecret
-        returnUrl = returnUrl
         connectionString = connectionString 
-        username = username
-        password = password
-        domain = domain
-        ap = ap
       }
 
     let rSettings =

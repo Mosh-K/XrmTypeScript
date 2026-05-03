@@ -5,31 +5,24 @@ open System.Threading.Tasks
 
 open Utility
 open Microsoft.Xrm.Sdk
-open Microsoft.Xrm.Sdk.Client
+open Microsoft.Xrm.Tooling.Connector
 open Microsoft.Xrm.Sdk.Messages
 open Microsoft.Xrm.Sdk.Query
 open Microsoft.Xrm.Sdk.Metadata
 open Microsoft.Crm.Sdk.Messages
 
-// Execute request
-let getResponse<'T when 'T :> OrganizationResponse> (proxy:IOrganizationService) request =
-  if(proxy :? OrganizationServiceProxy) then 
-    let orgProxy = proxy :?> OrganizationServiceProxy
-    orgProxy.Timeout <- TimeSpan(1,0,0)
-  (proxy.Execute(request)) :?> 'T
-
 // Retrieve version
-let retrieveVersion proxy =
+let retrieveVersion (proxy: CrmServiceClient) =
   let req = RetrieveVersionRequest()
-  let resp = getResponse<RetrieveVersionResponse> proxy req
+  let resp = proxy.Execute req :?> RetrieveVersionResponse
   parseVersion resp.Version
 
 // Retrieve data
-let internal retrieveMultiple (proxy:IOrganizationService) logicalName (query:QueryExpression) = 
+let internal retrieveMultiple (proxy:CrmServiceClient) (query:QueryExpression) = 
   query.PageInfo <- PagingInfo()
 
   let rec retrieveMultiple' 
-    (proxy:IOrganizationService) (query:QueryExpression) page cookie =
+    (proxy:CrmServiceClient) (query:QueryExpression) page cookie =
     seq {
         query.PageInfo.PageNumber <- page
         query.PageInfo.PagingCookie <- cookie
@@ -43,7 +36,7 @@ let internal retrieveMultiple (proxy:IOrganizationService) logicalName (query:Qu
   retrieveMultiple' proxy query 1 null
 
 // Perform requests as bulk
-let performAsBulk proxy requests handleResponse =
+let performAsBulk (proxy:CrmServiceClient) requests handleResponse =
   requests
   |> Array.chunkBySize 1000
   |> Array.collect (fun chunk ->
@@ -54,7 +47,7 @@ let performAsBulk proxy requests handleResponse =
       request.Settings.ContinueOnError <- false
       request.Settings.ReturnResponses <- true
 
-      let bulkResp = getResponse<ExecuteMultipleResponse> proxy request
+      let bulkResp = proxy.Execute(request) :?> ExecuteMultipleResponse
       bulkResp.Responses
       |> Seq.map (fun resp -> 
         if isNull resp.Fault then handleResponse resp
@@ -69,11 +62,11 @@ let internal getEntities
   if cols.Length = 0 then q.ColumnSet <- ColumnSet(true)
   else q.ColumnSet <- ColumnSet(Array.ofList cols)
 
-  retrieveMultiple proxy logicalName q
+  retrieveMultiple proxy q
 
 // Get all entities with a filter
 let internal getEntitiesFilter 
-  (proxy:IOrganizationService) (logicalName:string)
+  (proxy:CrmServiceClient) (logicalName:string)
   (cols:string list) (filter:Map<string,obj>) =
     
   let f = FilterExpression()
@@ -84,22 +77,22 @@ let internal getEntitiesFilter
   else q.ColumnSet <- ColumnSet(Array.ofList cols)
   q.Criteria <- f
     
-  retrieveMultiple proxy logicalName q
+  retrieveMultiple proxy q
 
 // Retrieve entity metadata for all entities
-let getAllEntityMetadataLight proxy =
+let getAllEntityMetadataLight (proxy:CrmServiceClient) =
   let request = RetrieveAllEntitiesRequest()
   request.EntityFilters <- Microsoft.Xrm.Sdk.Metadata.EntityFilters.Entity
-  let resp = getResponse<RetrieveAllEntitiesResponse> proxy request
+  let resp = proxy.Execute(request) :?> RetrieveAllEntitiesResponse
   resp.EntityMetadata
 
 // Retrieve all metadata for all entities
-let getAllEntityMetadata (proxy:IOrganizationService) =
+let getAllEntityMetadata (proxy:CrmServiceClient) =
   let request = RetrieveAllEntitiesRequest()
   request.EntityFilters <- Microsoft.Xrm.Sdk.Metadata.EntityFilters.All
   request.RetrieveAsIfPublished <- false
 
-  let resp = getResponse<RetrieveAllEntitiesResponse> proxy request
+  let resp = proxy.Execute(request) :?> RetrieveAllEntitiesResponse
   resp.EntityMetadata
 
 // Make retrieve request
@@ -111,8 +104,8 @@ let getEntityMetadataRequest lname =
   request
 
 // Retrieve single entity metadata
-let getEntityMetadata proxy lname =
-  let resp = getEntityMetadataRequest lname |> getResponse<RetrieveEntityResponse> proxy
+let getEntityMetadata (proxy:CrmServiceClient) lname =
+  let resp = proxy.Execute(getEntityMetadataRequest lname) :?> RetrieveEntityResponse
   resp.EntityMetadata
     
 
@@ -133,11 +126,11 @@ let makeAsyncTask  (f : unit->'a) =
 
 
 // Retrieve all optionset metadata
-let getAllOptionSetMetadata proxy =
+let getAllOptionSetMetadata (proxy:CrmServiceClient) =
   let request = RetrieveAllOptionSetsRequest()
   request.RetrieveAsIfPublished <- true
 
-  let resp = getResponse<RetrieveAllOptionSetsResponse> proxy request
+  let resp = proxy.Execute(request) :?> RetrieveAllOptionSetsResponse
   resp.OptionSetMetadata
 
 // Find relationship intersect entities
@@ -178,7 +171,7 @@ let getSpecificEntitiesAndDependentMetadata proxy logicalNames =
 
 
 // Retrieves all the logical names of entities in a solution
-let retrieveSolutionEntities (proxy:IOrganizationService) solutionName =
+let retrieveSolutionEntities (proxy:CrmServiceClient) solutionName =
   let solutionFilter = [("uniquename", solutionName)] |> Map.ofList
   let solutions = 
     getEntitiesFilter proxy "solution" 
@@ -208,22 +201,9 @@ let retrieveSolutionEntities (proxy:IOrganizationService) solutionName =
 
 // Proxy helper that makes it easy to get a new proxy instance
 let proxyHelper xrmAuth () =
-  let method = xrmAuth.method ?| ConnectionType.Proxy
-  let username = xrmAuth.username ?| ""
-  let password = xrmAuth.password ?| ""
-  let ap = xrmAuth.ap ?| AuthenticationProviderType.OnlineFederation
-  let domain = xrmAuth.domain ?| ""
-  let clientId = xrmAuth.clientId ?| ""
-  let returnUrl = xrmAuth.returnUrl ?| ""
-  let clientSecret = xrmAuth.clientSecret ?| ""
+  let clientId = defaultArg xrmAuth.clientId  ""
+  let clientSecret = defaultArg xrmAuth.clientSecret  ""
 
-  let proxyInstance = 
-    match method with
-    | Proxy ->
-      let manager = CrmAuth.getServiceManagement xrmAuth.url
-      let authToken = CrmAuth.authenticate manager ap username password domain
-      CrmAuth.getOrganizationServiceProxy manager authToken
-    | OAuth -> CrmAuth.getCrmServiceClient username password xrmAuth.url clientId returnUrl 
-    | ClientSecret -> CrmAuth.getCrmServiceClientClientSecret xrmAuth.url clientId clientSecret
-    | ConnectionString -> CrmAuth.getCrmServiceClientConnectionString xrmAuth.connectionString
-  proxyInstance
+  match xrmAuth.method with
+  | ClientSecret -> CrmAuth.getCrmServiceClientClientSecret xrmAuth.url clientId clientSecret
+  | ConnectionString -> CrmAuth.getCrmServiceClientConnectionString xrmAuth.connectionString

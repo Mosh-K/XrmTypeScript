@@ -3,7 +3,6 @@
 open System
 open Microsoft.Xrm.Sdk
 open Microsoft.Xrm.Sdk.Metadata
-open Microsoft.Xrm.Sdk.Client
 open System.Runtime.Serialization
 
 type RelType =
@@ -71,20 +70,13 @@ type Version = int * int * int * int
 type Intersect = string * Guid[]
 
 type ConnectionType = 
-  | Proxy
-  | OAuth
   | ClientSecret
   | ConnectionString
 
 type XrmAuthSettings = {
   url: Uri
-  method: ConnectionType option
-  username: string option
-  password: string option
-  domain: string option
-  ap: AuthenticationProviderType option
+  method: ConnectionType
   clientId: string option
-  returnUrl: string option
   clientSecret: string option
   connectionString: string option
 }

@@ -85,7 +85,7 @@ type Args private () =
     { command="method"
       altCommands=["m"]
       description="Connection method"
-      required=false }
+      required=true }
 
     { command="clientId"
       altCommands=["id"]
@@ -97,34 +97,9 @@ type Args private () =
       description="Client secret for the Azure Application"
       required=false }
 
-    { command="returnUrl"
-      altCommands=[]
-      description="Return URL defined for the Azure Application"
-      required=false }
-
     { command="connectionString"
       altCommands=[]
       description="Connection string used for authentication"
-      required=false }
-
-    { command="username"
-      altCommands=["u"; "usr"]
-      description="CRM Username"
-      required=false }
-
-    { command="password"
-      altCommands=["p"; "pwd"]
-      description="CRM Password"
-      required=false }
-
-    { command="domain"
-      altCommands=["d"; "dmn"]
-      description="Domain to use for CRM"
-      required=false }
-
-    { command="ap"
-      altCommands=[]
-      description="Authentication Provider Type"
       required=false }
   ]
 

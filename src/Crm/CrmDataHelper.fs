@@ -5,6 +5,7 @@ open Microsoft.Xrm.Sdk.Query
 
 open CrmBaseHelper
 open Microsoft.Xrm.Sdk
+open Microsoft.Xrm.Tooling.Connector
 
 
 // Retrieve entity form xml
@@ -34,7 +35,7 @@ let getEntityFormsBulk proxy skipInactiveForms lnames =
   |> Array.zip lnames
 
 // Retrieve all entity form xmls
-let getAllEntityForms proxy skipInactiveForms =
+let getAllEntityForms (proxy:CrmServiceClient) skipInactiveForms =
   let query = new QueryExpression("systemform")
   query.ColumnSet <- new ColumnSet([| "name"; "type"; "objecttypecode"; "formxml" |])
 
@@ -43,12 +44,12 @@ let getAllEntityForms proxy skipInactiveForms =
   let request = RetrieveMultipleRequest()
   request.Query <- query
     
-  let resp = getResponse<RetrieveMultipleResponse> proxy request
+  let resp = proxy.Execute(request) :?> RetrieveMultipleResponse
   resp.EntityCollection.Entities 
   |> Array.ofSeq
 
 // Retrieve fields for bpf
-let getBpfData (proxy:IOrganizationService) =
+let getBpfData (proxy:CrmServiceClient) =
   let query = new QueryExpression("workflow")
   query.ColumnSet <- new ColumnSet([| "name"; "clientdata"; "category"; "primaryentity" |])
 
@@ -57,6 +58,6 @@ let getBpfData (proxy:IOrganizationService) =
   let request = RetrieveMultipleRequest()
   request.Query <- query
     
-  let resp = getResponse<RetrieveMultipleResponse> proxy request
+  let resp = proxy.Execute(request) :?> RetrieveMultipleResponse
   resp.EntityCollection.Entities 
   |> Array.ofSeq

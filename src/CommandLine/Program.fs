@@ -1,37 +1,24 @@
 ﻿
 open System
 
-open Microsoft.Xrm.Sdk.Client
-
 open DG.XrmTypeScript
 open Utility
 open CommandLineHelper
 
 
 let getXrmAuth parsedArgs = 
-  let ap = 
-    getArg parsedArgs "ap" (fun ap ->
-      Enum.Parse(typeof<AuthenticationProviderType>, ap) 
-        :?> AuthenticationProviderType)
   let method =
-    getArg parsedArgs "method" (fun method ->
-      match method with
-      | "OAuth" -> ConnectionType.OAuth
-      | "ClientSecret" -> ConnectionType.ClientSecret
-      | "ConnectionString" -> ConnectionType.ConnectionString
-      | _ -> ConnectionType.Proxy 
-    )
+    match Map.find "method" parsedArgs with
+    | "ClientSecret" -> ConnectionType.ClientSecret
+    | "ConnectionString" -> ConnectionType.ConnectionString
+    | other -> failwithf "Unknown connection method: '%s'. Valid values: ClientSecret, ConnectionString" other
 
   { XrmAuthSettings.url = Uri(Map.find "url" parsedArgs)
     method = method
-    username = Map.tryFind "username" parsedArgs
-    password = Map.tryFind "password" parsedArgs
-    domain = Map.tryFind "domain" parsedArgs
     clientId = Map.tryFind "clientId" parsedArgs
-    returnUrl = Map.tryFind "returnUrl" parsedArgs
     clientSecret = Map.tryFind "clientSecret" parsedArgs
     connectionString = Map.tryFind "connectionString" parsedArgs
-    ap = ap; }
+  }
 
 let getRetrieveSettings parsedArgs =
   let entities = getListArg parsedArgs "entities" (fun s -> s.ToLower())
@@ -68,10 +55,6 @@ let getGenerationSettings parsedArgs =
     let value = definition.Substring(nameSplit + 1)
 
     label, value)
-
-  let nsSanitizer ns =
-    if String.IsNullOrWhiteSpace ns then String.Empty
-    else sanitizeString ns
 
   { XdtGenerationSettings.out = Map.tryFind "out" parsedArgs ?| "."
     crmVersion = getArg parsedArgs "crmVersion" parseVersion

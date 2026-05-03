@@ -227,15 +227,10 @@ Arguments can be passed via the `XrmTypeScript.exe.config` file or directly from
 | Argument         | Short-hand | Description                                  |
 | :--------------- | :--------- | :------------------------------------------- |
 | url              |            | URL to the organization                      |
-| method           | m          | OAuth, ClientSecret or ConnectionString      |
+| method           | m          | ClientSecret or ConnectionString             |
 | clientId         | id         | Azure Application Id                         |
 | clientSecret     | cs         | Client secret for the Azure Application      |
-| returnUrl        |            | Return URL of the Azure Application          |
 | connectionString |            | Connection String used for authentication    |
-| username         | u, usr     | Username for the CRM system                  |
-| password         | p, pwd     | Password for the CRM system                  |
-| domain           | d, dmn     | Domain for the user                          |
-| ap               |            | Authentication Provider Type                 |
 
 #### Generation
 
