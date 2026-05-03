@@ -146,7 +146,9 @@ let findRelationEntities allLogicalNames (metadata:EntityMetadata[]) =
   |> Array.Parallel.map (fun md ->
     md.ManyToManyRelationships
     |> Array.filter (fun m2m ->
-      not(Set.contains m2m.IntersectEntityName allLogicalNames))
+      not (Set.contains m2m.IntersectEntityName allLogicalNames)
+      && Set.contains m2m.Entity1LogicalName allLogicalNames
+      && Set.contains m2m.Entity2LogicalName allLogicalNames)
     |> Array.map (fun m2m -> m2m.IntersectEntityName))
   |> Array.concat
   |> Array.distinct
