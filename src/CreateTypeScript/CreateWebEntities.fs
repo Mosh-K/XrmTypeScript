@@ -78,6 +78,7 @@ let getBindVars (nameMap: Map<string, EntityInfo>) (filter: XrmAttribute -> bool
 
   entity.manyToOneRelationships
   |> List.filter (fun rel -> Map.tryFind rel.ReferencingAttribute attrMap |> Option.exists filter)
+  |> List.sortBy (fun rel -> rel.ReferencingEntityNavigationPropertyName)
   |> List.map (fun rel ->
     let eInfo = Map.find rel.ReferencedEntity nameMap
 
@@ -93,11 +94,11 @@ let getBindVars (nameMap: Map<string, EntityInfo>) (filter: XrmAttribute -> bool
       Comment.Basic eInfo.DisplayName,
       optional = true
     ))
-  |> sortByName
 
 let getLookupValueVars (attrs: XrmAttribute list) =
   attrs
   |> List.filter (fun a -> a.specialType = SpecialType.EntityReference)
+  |> List.sortBy (fun a -> a.logicalName)
   |> List.map (fun a ->
     Variable.Create(
       valueInfix a.logicalName,
@@ -105,7 +106,6 @@ let getLookupValueVars (attrs: XrmAttribute list) =
       getAttributeComment a None,
       optional = true
     ))
-  |> sortByName
 
 let private toInterfaceName forWrite schemaName =
   if forWrite then $"{schemaName}.{CREATE_INTERFACE_NAME}" else schemaName
@@ -206,6 +206,7 @@ let getManyToManyVars nameMap (schemaNames: Set<string>) forWrite (entity: XrmEn
 let getFormattedVars (entity: XrmEntity) =
   entity.attributes
   |> List.filter hasFormattedValue
+  |> List.sortBy (fun attr -> attr.logicalName)
   |> List.map (fun attr ->
     Variable.Create(
       formattedName attr,
@@ -213,11 +214,11 @@ let getFormattedVars (entity: XrmEntity) =
       getAttributeComment attr (Some entity.optionSets),
       optional = true
     ))
-  |> sortByName
 
 let getLookupNameVars (attrs: XrmAttribute list) =
   attrs
   |> List.filter (fun a -> a.specialType = SpecialType.EntityReference)
+  |> List.sortBy (fun a -> a.logicalName)
   |> List.map (fun a ->
     let vType =
       match a.targetEntitySets with
@@ -234,7 +235,6 @@ let getLookupNameVars (attrs: XrmAttribute list) =
       Comment.Attribute(a.displayName, tes = a.targetEntitySets),
       optional = true
     ))
-  |> sortByName
 
 let getScalarVars (filter: XrmAttribute -> bool) (entity: XrmEntity) =
   entity.attributes
