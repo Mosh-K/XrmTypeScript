@@ -1,14 +1,15 @@
 # Changelog
 
-## [Unreleased]
+## [1.5.0] - 2026-05-08
 ### Changed
 - Attributes and navigation properties are now filtered against the OData CSDL `$metadata`, ensuring generated typings reflect only what is accessible on the wire
 - Virtual attributes (shadow fields, `yomi*` names, metadata-only columns) are now excluded via CSDL rather than SDK-side heuristics
 - File-type columns are now typed as GUIDs, reflecting their actual wire format
+- When CSDL is unavailable (legacy proxy auth), heuristic filters are applied instead
 ### Fixed
 - Duplicate ManyToOne navigation properties (collapsed by the CSDL) no longer generate duplicate interface members
 
-## [1.4.0] - 2026-04-28
+## [1.4.0] - 2026-04-28 (unreleased)
 ### Changed
 - WebEntities internal interfaces reorganized into sub-namespaces under `_`: `Scalars`, `Read`, `Write`, `Binds`, and `Lookup`, replacing the previous flat layout
 - Lookup value properties (`_*_value`) now include the lookup field's logical name in their JSDoc comment
@@ -57,7 +58,7 @@
 ### Added
 - Initial public release
 
-[1.4.0]: https://github.com/Mosh-K/XrmTypeScript/releases/tag/v1.4.0
+[1.5.0]: https://github.com/Mosh-K/XrmTypeScript/releases/tag/v1.5.0
 [1.3.0]: https://github.com/Mosh-K/XrmTypeScript/releases/tag/v1.3.0
 [1.2.0]: https://github.com/Mosh-K/XrmTypeScript/releases/tag/v1.2.0
 [1.1.0]: https://github.com/Mosh-K/XrmTypeScript/releases/tag/v1.1.0

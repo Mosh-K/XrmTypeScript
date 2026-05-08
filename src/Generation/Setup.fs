@@ -76,12 +76,18 @@ let interpretCrmData (gSettings: XdtGenerationSettings) (rawState: RawState) =
 
   let entityMetadata =
     let csdlMap = rawState.csdlData |> Array.map (fun e -> e.Name, e) |> Map.ofArray
-    rawState.metadata
-    |> Array.Parallel.map (interpretEntity infoMap gSettings.labelMapping)
-    |> Array.Parallel.choose (fun e ->
-      match Map.tryFind e.logicalName csdlMap with
-      | Some c -> Some (filterEntity c e)
-      | None -> None)
+    let interpreted = rawState.metadata |> Array.Parallel.map (interpretEntity infoMap gSettings.labelMapping)
+    printfn "Done!"
+    if csdlMap.IsEmpty then
+      printf "CSDL unavailable, applying heuristic filters..."
+      interpreted |> Array.Parallel.map filterEntityFallback
+    else
+      printf "Filtering entities against OData CSDL metadata..."
+      interpreted
+      |> Array.Parallel.choose (fun e ->
+        match Map.tryFind e.logicalName csdlMap with
+        | Some c -> Some (filterEntity c e)
+        | None -> None)
 
   let bpfControls = interpretBpfs rawState.bpfData
 
