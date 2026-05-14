@@ -104,4 +104,5 @@ let interpretEntity (nameMap: Map<string, EntityInfo>) labelMapping (metadata:En
     manyToManyRelationships = metadata.ManyToManyRelationships |> List.ofArray
     displayName = getLabel metadata.DisplayName
     isIntersect = metadata.IsIntersect.GetValueOrDefault false
+    isActivity = metadata.IsActivity.GetValueOrDefault false
   }

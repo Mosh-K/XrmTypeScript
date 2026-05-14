@@ -167,9 +167,15 @@ let getSpecificEntitiesAndDependentMetadata proxy logicalNames =
       |> Array.exists (fun a -> 
         a.AttributeTypeName = AttributeTypeDisplayName.PartyListType))
 
-  let additionalEntities = 
+  let needActivityPointer =
+    not (set.Contains "activitypointer") &&
+    entities
+    |> Array.exists (fun m -> m.IsActivity.GetValueOrDefault false)
+
+  let additionalEntities =
     findRelationEntities set entities
     |> if needActivityParty then Array.append [|"activityparty"|] else id
+    |> if needActivityPointer then Array.append [|"activitypointer"|] else id
     |> getEntityMetadataBulk proxy
 
   Array.append entities additionalEntities

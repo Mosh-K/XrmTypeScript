@@ -304,6 +304,11 @@ let getBlankEntityInterfaces (nameMap: Map<string, EntityInfo>) (entity: XrmEnti
   let lookupN = "LogicalNames"
   let lookupV = "Values"
 
+  let inheritedReadExtends =
+    if entity.isActivity then [ $"ActivityPointer.{INTERNAL_NS}.{READ_NS}.{relations}" ] else []
+  let inheritedWriteExtends =
+    if entity.isActivity then [ $"ActivityPointer.{INTERNAL_NS}.{WRITE_NS}.{relations}" ] else []
+
   {
     readableScalars = Interface.Create(rScalars, extends = [ cScalars ])
     creatableScalars = Interface.Create(cScalars, extends = [ uScalars ])
@@ -330,7 +335,7 @@ let getBlankEntityInterfaces (nameMap: Map<string, EntityInfo>) (entity: XrmEnti
       Interface.Create(
         UPDATE_INTERFACE_NAME,
         comment,
-        [
+        inheritedWriteExtends @ [
           $"{INTERNAL_NS}.{SCALAR_NS}.{uScalars}"
           $"{INTERNAL_NS}.{WRITE_NS}.{relations}"
           $"{INTERNAL_NS}.{BINDS_NS}.{uBinds}" ]
@@ -339,7 +344,7 @@ let getBlankEntityInterfaces (nameMap: Map<string, EntityInfo>) (entity: XrmEnti
       Interface.Create(
         CREATE_INTERFACE_NAME,
         comment,
-        [
+        inheritedWriteExtends @ [
           $"{INTERNAL_NS}.{SCALAR_NS}.{cScalars}"
           $"{INTERNAL_NS}.{WRITE_NS}.{relations}"
           $"{INTERNAL_NS}.{BINDS_NS}.{cBinds}" ]
@@ -348,7 +353,7 @@ let getBlankEntityInterfaces (nameMap: Map<string, EntityInfo>) (entity: XrmEnti
       Interface.Create(
         entity.schemaName,
         comment,
-        [ 
+        inheritedReadExtends @ [
           $"{entity.schemaName}.{INTERNAL_NS}.{SCALAR_NS}.{rScalars}"
           $"{entity.schemaName}.{INTERNAL_NS}.{READ_NS}.{relations}"
           $"{entity.schemaName}.{INTERNAL_NS}.{frmt}"
