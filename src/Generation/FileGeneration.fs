@@ -32,19 +32,14 @@ let copyResourceDirectly outDir resName filename =
 /// Clear any previously output files
 let clearOldOutputFiles out =
   printf "Clearing old files..."
-  let rec emptyDir path =
-    Directory.EnumerateFiles(path, "*.d.ts") 
-    |> Seq.iter File.Delete
-
-    Directory.EnumerateDirectories(path, "*")  
-    |> Seq.iter (fun dir ->
-      emptyDir dir
-      try Directory.Delete dir
-      with _ -> ()
-    )
-
   Directory.CreateDirectory out |> ignore
-  emptyDir out
+
+  Directory.EnumerateFiles(out, "*.d.ts")
+  |> Seq.iter File.Delete
+
+  Directory.EnumerateDirectories(out)
+  |> Seq.iter (fun dir -> Directory.Delete(dir, true))
+
   printfn "Done!"
 
 /// Generate the Enum definitions
